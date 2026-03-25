@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QAL2 DUOMETAL — Analyse ENVEA</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --blue:    #1B3F7A;
+    --blue2:   #2A5EBE;
+    --lblue:   #EBF0F8;
+    --red:     #C00000;
+    --red2:    #E53935;
+    --redbg:   #FDECEA;
+    --orange:  #C55A11;
+    --orabg:   #FEF3EC;
+    --green:   #375623;
+    --greenbg: #EBF3E8;
+    --gold:    #7B6000;
+    --goldbg:  #FEF9E7;
+    --grey:    #F5F7FA;
+    --dark:    #1A1A2E;
+    --border:  #DEE4EE;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #F0F4FA;
+    color: #222;
+    min-height: 100vh;
+  }
+
+  /* ─── HEADER ─────────────────────────────────────────── */
+  .app-header {
+    background: var(--blue);
+    color: white;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .app-header .logo { font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+  .app-header .logo span { color: #64B5F6; }
+  .app-header .badge-conf {
+    background: var(--red); color: white;
+    font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 3px; letter-spacing: 1px;
+  }
+  .app-header .meta { font-size: 12px; color: #90CAF9; text-align: right; line-height: 1.5; }
+
+  /* ─── HERO ────────────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, var(--blue) 0%, #2A5EBE 100%);
+    color: white; padding: 36px 40px 28px;
+  }
+  .hero h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+  .hero .subtitle { font-size: 14px; color: #90CAF9; margin-bottom: 18px; }
+  .hero .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hero .tag {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px; padding: 4px 12px; font-size: 12px; color: white;
+  }
+
+  /* ─── KPI CARDS ───────────────────────────────────────── */
+  .kpi-row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; padding: 24px 40px 0;
+  }
+  .kpi-card {
+    background: white; border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 20px; cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+  .kpi-card.active { border-color: var(--blue); }
+  .kpi-card .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 8px; }
+  .kpi-card .kpi-title { font-size: 14px; color: #555; margin-bottom: 12px; }
+  .kpi-card .kpi-stars { font-size: 24px; margin-bottom: 4px; }
+  .kpi-card .kpi-score { font-size: 36px; font-weight: 800; line-height: 1; }
+  .kpi-card .kpi-sub { font-size: 12px; color: #777; margin-top: 6px; }
+  .kpi-card.red .kpi-label, .kpi-card.red .kpi-score { color: var(--red); }
+  .kpi-card.red { border-top: 4px solid var(--red); }
+  .kpi-card.orange .kpi-label, .kpi-card.orange .kpi-score { color: var(--orange); }
+  .kpi-card.orange { border-top: 4px solid var(--orange); }
+  .kpi-card.green .kpi-label, .kpi-card.green .kpi-score { color: var(--green); }
+  .kpi-card.green { border-top: 4px solid var(--green); }
+
+  /* ─── TABS ────────────────────────────────────────────── */
+  .tabs {
+    display: flex; gap: 0; padding: 24px 40px 0;
+    border-bottom: 2px solid var(--border);
+    margin: 0 0 0 0;
+  }
+  .tab-btn {
+    padding: 10px 24px; font-size: 14px; font-weight: 600;
+    border: none; background: none; cursor: pointer;
+    color: #777; border-bottom: 3px solid transparent;
+    margin-bottom: -2px; transition: all 0.2s;
+  }
+  .tab-btn:hover { color: var(--blue); }
+  .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+  /* ─── CONTENT ─────────────────────────────────────────── */
+  .content { padding: 28px 40px 60px; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ─── BLOC 1 ──────────────────────────────────────────── */
+  .section-title {
+    font-size: 18px; font-weight: 700; color: var(--blue);
+    margin-bottom: 16px; padding-bottom: 8px;
+    border-bottom: 3px solid var(--blue);
+  }
+  .criteria-group { margin-bottom: 28px; }
+  .criteria-group-title {
+    font-size: 13px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #888; margin-bottom: 10px;
+    padding-left: 12px; border-left: 3px solid var(--border);
+  }
+  .criterion-row {
+    background: white; border-radius: 8px; margin-bottom: 6px;
+    border: 1px solid var(--border); cursor: pointer;
+    transition: all 0.2s; overflow: hidden;
+  }
+  .criterion-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .criterion-header {
+    display: flex; align-items: center; padding: 12px 16px; gap: 12px;
+  }
+  .score-pill {
+    min-width: 44px; text-align: center; border-radius: 20px;
+    font-size: 13px; font-weight: 700; padding: 3px 10px;
+  }
+  .score-0 { background: var(--redbg); color: var(--red); }
+  .score-1 { background: var(--orabg); color: var(--orange); }
+  .score-2 { background: var(--goldbg); color: var(--gold); }
+  .score-3 { background: var(--greenbg); color: var(--green); }
+  .criterion-label { flex: 1; font-size: 14px; font-weight: 500; }
+  .expand-icon { color: #bbb; font-size: 18px; transition: transform 0.2s; }
+  .criterion-row.open .expand-icon { transform: rotate(90deg); }
+  .criterion-detail {
+    display: none; padding: 0 16px 14px 72px;
+    font-size: 13px; color: #555; line-height: 1.6;
+    border-top: 1px solid #f0f0f0;
+  }
+  .criterion-row.open .criterion-detail { display: block; padding-top: 10px; }
+
+  /* ─── BLOC 2 ──────────────────────────────────────────── */
+  .ams-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px; margin-top: 8px;
+  }
+  .ams-card {
+    background: white; border-radius: 10px; border: 1px solid var(--border);
+    padding: 16px; transition: all 0.2s; cursor: default;
+  }
+  .ams-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.1); }
+  .ams-card.ok { border-left: 4px solid var(--green); }
+  .ams-card.nc { border-left: 4px solid var(--red); }
+  .ams-card.warn { border-left: 4px solid var(--orange); }
+  .ams-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .grade-badge {
+    width: 44px; height: 44px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 800;
+  }
+  .grade-A { background: var(--greenbg); color: var(--green); }
+  .grade-B { background: var(--goldbg); color: var(--gold); }
+  .grade-D { background: var(--orabg); color: var(--orange); }
+  .grade-F { background: var(--redbg); color: var(--red); }
+  .ams-canal { font-weight: 700; font-size: 16px; }
+  .ams-instrument { font-size: 12px; color: #888; }
+  .ams-stats { display: flex; gap: 12px; margin-bottom: 8px; }
+  .ams-stat { background: var(--grey); border-radius: 6px; padding: 6px 10px; font-size: 12px; }
+  .ams-stat span { font-weight: 700; }
+  .ams-resume { font-size: 13px; color: #555; line-height: 1.5; }
+  .ams-levels { font-size: 12px; color: #888; margin-top: 6px; font-style: italic; }
+
+  /* ─── BLOC 3 ──────────────────────────────────────────── */
+  .action-list { margin-top: 8px; }
+  .action-item {
+    background: white; border-radius: 10px; border: 1px solid var(--border);
+    padding: 16px 20px; margin-bottom: 10px;
+    display: grid; grid-template-columns: 40px 80px 1fr 120px 120px;
+    gap: 16px; align-items: start; cursor: pointer; transition: all 0.2s;
+  }
+  .action-item:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+  .action-prio {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 16px; background: var(--blue); color: white;
+  }
+  .action-type-badge {
+    display: inline-block; border-radius: 4px;
+    font-size: 11px; font-weight: 700; padding: 3px 8px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    align-self: center;
+  }
+  .type-LABO { background: #E3F2FD; color: #1565C0; }
+  .type-AMS  { background: var(--redbg); color: var(--red); }
+  .type-DOCS { background: var(--goldbg); color: var(--gold); }
+  .type-EXPLOIT { background: #F3E5F5; color: #6A1B9A; }
+  .action-body .action-label { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .action-body .action-comment { display: none; font-size: 13px; color: #555; line-height: 1.6; margin-top: 8px; }
+  .action-item.open .action-comment { display: block; }
+  .action-meta { font-size: 12px; color: #777; line-height: 1.8; }
+  .action-impact { font-size: 12px; color: #555; font-style: italic; line-height: 1.5; }
+
+  /* ─── GRAPHIQUES ──────────────────────────────────────── */
+  .charts-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 20px; margin-top: 8px;
+  }
+  .chart-card {
+    background: white; border-radius: 10px; border: 1px solid var(--border);
+    padding: 20px; position: relative;
+  }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title { font-size: 14px; font-weight: 700; color: var(--blue); margin-bottom: 4px; }
+  .chart-sub { font-size: 12px; color: #888; margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 280px; }
+  .chart-wrap.tall { height: 360px; }
+  .insight-box {
+    background: var(--lblue); border-left: 4px solid var(--blue);
+    border-radius: 0 6px 6px 0; padding: 10px 14px;
+    font-size: 13px; color: #333; margin-top: 14px; line-height: 1.6;
+  }
+  .insight-box.red { background: var(--redbg); border-color: var(--red); }
+  .insight-box.orange { background: var(--orabg); border-color: var(--orange); }
+  .insight-box.green { background: var(--greenbg); border-color: var(--green); }
+
+  /* ─── FOOTER ──────────────────────────────────────────── */
+  .app-footer {
+    background: var(--blue); color: rgba(255,255,255,0.5);
+    text-align: center; padding: 14px; font-size: 12px;
+  }
+
+  /* ─── RESPONSIVE ──────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: 1fr; padding: 16px; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .action-item { grid-template-columns: 40px 80px 1fr; }
+    .action-meta, .action-impact { grid-column: 2 / -1; }
+    .content { padding: 16px; }
+    .tabs { padding: 16px 16px 0; }
+    .hero { padding: 24px 20px; }
+  }
+
+  /* ─── TOOLTIP CUSTOM ──────────────────────────────────── */
+  .tooltip-custom {
+    background: rgba(27,63,122,0.95) !important;
+    border-radius: 6px !important;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="logo">ENV<span>EA</span> · QAL2 Analyser</div>
+  <div class="meta">CKL25-A593-PR01-V01 · KALI'AIR · Mars 2026<br>Rapport basé sur archives DCS 4 500 min</div>
+  <div class="badge-conf">CONFIDENTIEL</div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>QAL2 DUOMETAL — Analyse de conformité</h1>
+  <div class="subtitle">Four de brûlage · Coudun (60) · Campagne 28–30 octobre 2025 · AMS ENVEA MIR9000 + Graphite 52-M + PCME QAL181</div>
+  <div class="tags">
+    <span class="tag">NF EN 14181</span>
+    <span class="tag">XP X 43-132</span>
+    <span class="tag">18 essais SRM</span>
+    <span class="tag">7 polluants</span>
+    <span class="tag">Vérification archives DCS 1 min</span>
+  </div>
+</div>
+
+<!-- KPI CARDS -->
+<div class="kpi-row">
+  <div class="kpi-card red active" onclick="switchTab('bloc1')" id="kpi1">
+    <div class="kpi-label">Bloc 1 — Rapport labo</div>
+    <div class="kpi-title">Fiabilité du rapport KALI'AIR</div>
+    <div class="kpi-stars">★★☆☆☆</div>
+    <div class="kpi-score">2 / 5</div>
+    <div class="kpi-sub">7 anomalies · 5 erreurs normatives formelles</div>
+  </div>
+  <div class="kpi-card orange" onclick="switchTab('bloc2')" id="kpi2">
+    <div class="kpi-label">Bloc 2 — AMS ENVEA</div>
+    <div class="kpi-title">Efficacité des instruments</div>
+    <div class="kpi-stars">★★★☆☆</div>
+    <div class="kpi-score">3 / 5</div>
+    <div class="kpi-sub">3 canaux A/B · 4 canaux D/F</div>
+  </div>
+  <div class="kpi-card green" onclick="switchTab('bloc3')" id="kpi3">
+    <div class="kpi-label">Bloc 3 — Plan d'action</div>
+    <div class="kpi-title">9 recommandations priorisées</div>
+    <div class="kpi-stars">📋</div>
+    <div class="kpi-score">9</div>
+    <div class="kpi-sub">Priorités 1–9 · LABO / AMS / DOCS / EXPLOIT</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('bloc1')" id="tab-bloc1">📋 Bloc 1 — Fiabilité rapport</button>
+  <button class="tab-btn" onclick="switchTab('bloc2')" id="tab-bloc2">📡 Bloc 2 — AMS ENVEA</button>
+  <button class="tab-btn" onclick="switchTab('bloc3')" id="tab-bloc3">🎯 Bloc 3 — Plan d'action</button>
+  <button class="tab-btn" onclick="switchTab('graphiques')" id="tab-graphiques">📈 Graphiques DCS</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- ════════ BLOC 1 ════════ -->
+  <div class="tab-pane active" id="pane-bloc1">
+    <div class="section-title">Bloc 1 — Score de fiabilité du rapport labo KALI'AIR</div>
+    <p style="font-size:13px;color:#666;margin-bottom:20px">Score par critère : <span style="background:var(--greenbg);color:var(--green);padding:1px 7px;border-radius:10px;font-weight:700">3/3 ✓</span> conforme · <span style="background:var(--goldbg);color:var(--gold);padding:1px 7px;border-radius:10px;font-weight:700">2/3 △</span> partiel · <span style="background:var(--orabg);color:var(--orange);padding:1px 7px;border-radius:10px;font-weight:700">1/3</span> douteux · <span style="background:var(--redbg);color:var(--red);padding:1px 7px;border-radius:10px;font-weight:700">0/3 ✗</span> non-conforme · Cliquer pour détailler</p>
+
+    <div id="criteria-container"></div>
+  </div>
+
+  <!-- ════════ BLOC 2 ════════ -->
+  <div class="tab-pane" id="pane-bloc2">
+    <div class="section-title">Bloc 2 — Score d'efficacité des AMS ENVEA</div>
+    <p style="font-size:13px;color:#666;margin-bottom:20px">Note par canal : A = excellent · B = acceptable · D = à surveiller · F = non-conforme</p>
+    <div class="ams-grid" id="ams-container"></div>
+  </div>
+
+  <!-- ════════ BLOC 3 ════════ -->
+  <div class="tab-pane" id="pane-bloc3">
+    <div class="section-title">Bloc 3 — Plan d'action ENVEA</div>
+    <p style="font-size:13px;color:#666;margin-bottom:20px">9 actions priorisées · Cliquer pour détailler chaque action</p>
+    <div class="action-list" id="action-container"></div>
+  </div>
+
+  <!-- ════════ GRAPHIQUES ════════ -->
+  <div class="tab-pane" id="pane-graphiques">
+    <div class="section-title">Graphiques — Analyse archives DCS vs valeurs SRM</div>
+    <div class="charts-grid">
+
+      <!-- Chart 1: CO AMS vs SRM -->
+      <div class="chart-card full">
+        <div class="chart-title">CO — AMS moyen par essai vs yi SRM (archives DCS 1 min)</div>
+        <div class="chart-sub">Chaque barre = moyenne AMS sur la fenêtre d'essai (1h) · Point = valeur SRM rapport · Ratio moyen = 0,99 ✓</div>
+        <div class="chart-wrap tall"><canvas id="chartCO"></canvas></div>
+        <div class="insight-box green">✔ <strong>Traçabilité DCS validée</strong> — CO: ratio CSV/SRM = 0,99±0,02 sur 17/18 essais. Les données transmises au labo correspondent aux archives minute. Aucune anomalie détectée.</div>
+      </div>
+
+      <!-- Chart 2: NOx AMS vs SRM -->
+      <div class="chart-card full">
+        <div class="chart-title">NOx — AMS moyen par essai vs yi SRM</div>
+        <div class="chart-sub">NOx essais 16 et 17 marqués ✕ dans le rapport (exclus) · Ratio global = 1,00±0,01 ✓</div>
+        <div class="chart-wrap tall"><canvas id="chartNOx"></canvas></div>
+        <div class="insight-box orange">⚠ <strong>Essais 16 & 17 exclus pour NOx</strong> mais CO essai 16 (CV=85%, mêmes conditions) non exclu — traitement incohérent entre polluants. À contester.</div>
+      </div>
+
+      <!-- Chart 3: CO Instabilité CV -->
+      <div class="chart-card">
+        <div class="chart-title">Instabilité procédé CO — Coefficient de variation par essai</div>
+        <div class="chart-sub">CV = σ/μ. EN 14181 §5.5 exige conditions normales d'exploitation</div>
+        <div class="chart-wrap"><canvas id="chartCV"></canvas></div>
+        <div class="insight-box red">🔴 CV > 80% sur <strong>tous</strong> les essais CO. Min=2 / Max=1311 mg/Nm³ lors de l'essai 1. Représentativité de la calibration contestable.</div>
+      </div>
+
+      <!-- Chart 4: O2 facteur -->
+      <div class="chart-card">
+        <div class="chart-title">O₂ — Distribution & facteur de normalisation</div>
+        <div class="chart-sub">O₂ moyen = 18,85% → Facteur = 4,65× | ΔO₂ ±1% = ±18% sur toutes valeurs normalisées</div>
+        <div class="chart-wrap"><canvas id="chartO2"></canvas></div>
+        <div class="insight-box orange">⚠ Facteur normalisation O₂ = <strong>4,65×</strong> (vs ~3,3 théorique à 19%). Une erreur O₂ de +1% sous-estime toutes les concentrations normalisées de 18%.</div>
+      </div>
+
+      <!-- Chart 5: HF -->
+      <div class="chart-card">
+        <div class="chart-title">HF — Valeurs AMS pendant la campagne (3 000 min)</div>
+        <div class="chart-sub">Confirmé par archives DCS : HF ≡ 0,000 sur toute la campagne</div>
+        <div class="chart-wrap"><canvas id="chartHF"></canvas></div>
+        <div class="insight-box red">🔴 HF absolu = 0,000 mg/Nm³ confirmé. La calibration QAL2 HF est sans objet pour cette installation. Procédure §5.3 du labo inapplicable.</div>
+      </div>
+
+      <!-- Chart 6: AMS grades radar -->
+      <div class="chart-card">
+        <div class="chart-title">Performance globale AMS — Vue d'ensemble</div>
+        <div class="chart-sub">Score normalisé 0–100 par canal (100 = parfait)</div>
+        <div class="chart-wrap"><canvas id="chartRadar"></canvas></div>
+        <div class="insight-box">CO, Poussières, O₂ performants. NOx borderline. SO₂, COVt, HCl, HF en défaut — interventions requises avant nouveau QAL2.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="app-footer">ENVEA · Analyse interne préparatoire réunion · CKL25-A593-PR01-V01 · KALI'AIR · Mars 2026 — CONFIDENTIEL</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════
+const CRITERES = [
+  {
+    cat: "Calculs statistiques",
+    items: [
+      { label: "σ₀·Kv SO₂ = 0,0 (mathématiquement impossible)", score: 0,
+        detail: "σ₀ = P×E/1,96 = 0,20×15/1,96 = 1,53 → σ₀·Kv ≈ 1,38. Valeur 0,0 = erreur de formule dans le tableur labo. Non-conformité formelle, opposable au COFRAC. Le ratio Sd/σ₀·Kv=16,12/0,0 est donc indéfini — la variabilité SO₂ n'a jamais été testée correctement." },
+      { label: "σ₀·Kv HCl = 0,06 (9× trop bas — Sd/σ₀·Kv = ×33 fictif)", score: 0,
+        detail: "σ₀ = 0,40×3/1,96 = 0,612 × Kv(0,9) ≈ 0,55 mg/Nm³. Le rapport affiche 0,06. Le ratio Sd/σ₀·Kv affiché (×33) est arithmétiquement faux. NC formelle opposable au COFRAC. Sd réel = 0,71 → Sd/σ₀·Kv corrigé = 0,71/0,55 = 1,29 (NC réelle mais bien moindre que ×33)." },
+      { label: "Calcul R², a, b cohérents pour les autres polluants", score: 3,
+        detail: "Contre-vérification effectuée sur CO, NOx, COVt, Poussières, O₂, HF. Valeurs cohérentes avec la méthode EN 14181." },
+    ]
+  },
+  {
+    cat: "Respect des procédures normatives",
+    items: [
+      { label: "Cas A appliqué avec pente HF négative (−5,9)", score: 0,
+        detail: "EN 14181 §6.5.1 : si la procédure Cas A produit une pente négative, il est obligatoire de basculer en Cas B ou C. Le labo a conservé Cas A sans justification. NC de procédure opposable au COFRAC." },
+      { label: "Injection directe HCl & HF — test réponse sans tête de ligne", score: 0,
+        detail: "EN 14181 §5.3 exige que le test de temps de réponse couvre l'ensemble du système (sonde → analyseur). Les résultats obtenus (HCl: 583s, HF: >1320s) dépassent la limite de 400s ET sont non représentatifs du système réel car la sonde est court-circuitée." },
+      { label: "Dérogation variabilité CO documentée (non standardisée)", score: 2,
+        detail: "Dérogation à NF EN 14181 explicitement mentionnée dans le rapport (variabilité CO). Nécessite validation de l'autorité compétente (DREAL). Sans cette validation, la dérogation reste unilatérale." },
+      { label: "Choix Cas A pour NOx discutable (niveaux < 30% VLE)", score: 1,
+        detail: "XP X 43-132 §6.5 : le Cas C est recommandé quand les niveaux d'émissions sont inférieurs à 30% de la VLE. NOx : 25–55 mg/Nm³ vs VLE 100 mg/Nm³ = 25–55%. À la limite. Non justifié dans le rapport." },
+    ]
+  },
+  {
+    cat: "Justification des retraits d'essais",
+    items: [
+      { label: "NOx E16+E17 exclus — CO E16 non exclu : traitement incohérent", score: 0,
+        detail: "Archives DCS ▸ NOx E16: CV=87%, E17: CV=44%. CO E16: CV=85% — même jour (30 oct.), mêmes conditions. Plage AMS CO E16: 12–651 mg/Nm³, σ=207. Si l'exclusion NOx est liée à l'instabilité, CO E16 devrait l'être aussi. Incohérence inter-polluants non justifiée dans le rapport." },
+      { label: "Poussières, SO₂, HF : 3 retraits > 2 maximum recommandé", score: 0,
+        detail: "XP X 43-132 p.4 stipule de 'ne pas retirer plus de 2 valeurs aberrantes'. Ce seuil est rappelé par le labo lui-même page 4 du rapport — puis il l'enfreint sur 3 polluants. L'application incohérente de la règle affaiblit la crédibilité du rapport." },
+      { label: "CO et NOx (hors E16-17) : retraits dans la limite", score: 2,
+        detail: "Les essais retirés pour CO et NOx (hors E16-17) restent dans la limite des 2 valeurs aberrantes recommandées. Confirmé par archives DCS : ces retraits correspondent à des plages d'instabilité procédé effective." },
+    ]
+  },
+  {
+    cat: "Cohérence & synchronisation — vérification archives DCS",
+    items: [
+      { label: "✔ Traçabilité DCS → labo VALIDÉE — ratio CSV/SRM = 0,99±0,02", score: 3,
+        detail: "Analyse croisée archives DCS 1 min (oct. 28-30, 4 500 points) vs xi/yi du rapport ▸ CO: ratio 0,99±0,02 sur 17/18 essais · NOx: ratio 1,00±0,01 sur 18/18. Les données transmises au labo correspondent exactement aux archives minute. Pas d'anomalie de traçabilité." },
+      { label: "Instabilité procédé extrême : CV>80% sur tous les essais CO", score: 0,
+        detail: "Archives DCS ▸ CV (σ/μ) CO > 80% sur 17/18 essais. E1: σ=333, min=2, max=1311 mg/Nm³. E16: σ=207, min=12, max=651. EN 14181 §5.5 requiert des conditions représentatives du fonctionnement normal. Un SRM de 1h dans ces conditions produit une moyenne correcte mais une calibration fragile. Argument pour demander une nouvelle campagne en conditions stables." },
+      { label: "HF = 0,000 absolu confirmé par 3 000 min archives DCS", score: 0,
+        detail: "Archives DCS ▸ HF max = 0,003 mg/Nm³ sur toute la campagne. Les valeurs SRM HF (0,5–4,9 mg/Nm³) représentent les émissions RÉELLES mais l'AMS n'en voit rien. La calibration HF est donc sans objet : on calibre un instrument qui ne mesure pas l'émission réelle. Conforte la contestation de la procédure §5.3." },
+      { label: "Synchronisation SRM/AMS via DCS (dérogation §5.2 validée)", score: 2,
+        detail: "Dérogation autorisée par XP X 43-132. Confirmé par archives DCS : l'horodatage DCS est cohérent avec les fenêtres SRM du rapport. La dérogation est donc justifiée a posteriori." },
+      { label: "Durée et nombre d'essais conformes (EN 14181 §5.4)", score: 3,
+        detail: "3 jours de campagne, 16–18 essais valides par polluant, 1h par prélèvement SRM. Conforme à EN 14181 §5.4." },
+    ]
+  },
+];
+
+const AMS_SCORES = [
+  { ams: "MIR9000", canal: "CO", grade: "A", ok: true,
+    r2: "0,990", pente: "0,978", sd: "✓ OK", niveaux: "163–365 mg/Nm³",
+    resume: "Excellente performance. R²=0,990, pente quasi-idéale (0,978). Canal CO fiable sur cet instrument. Corrélation confirmée par archives DCS (ratio 0,99)." },
+  { ams: "PCME QAL181", canal: "Poussières", grade: "A", ok: true,
+    r2: "1,000", pente: "1,230", sd: "✓ OK", niveaux: "Variable",
+    resume: "R²=1,0, variabilité excellente. Légère surestimation (pente 1,23) cohérente avec le principe forward scatter. Canal poussières fiable." },
+  { ams: "MIR9000", canal: "O₂", grade: "B", ok: true,
+    r2: "0,886", pente: "0,924", sd: "✓ OK", niveaux: "17–21% sec",
+    resume: "R² légèrement sous 0,9. Paramètre périphérique — acceptable. Facteur normalisation O₂ = 4,65× : une erreur O₂ de 1% impacte 18% toutes concentrations normalisées." },
+  { ams: "MIR9000", canal: "NOx", grade: "B-", ok: true,
+    r2: "0,935", pente: "0,810 !", sd: "✓ OK", niveaux: "25–55 mg/Nm³",
+    resume: "R² correct, variabilité conforme. Pente 0,81 : sous-estimation 19%. Convertisseur NO→NO₂ probablement dégradé (efficacité < 95%). Vérification à planifier rapidement." },
+  { ams: "MIR9000", canal: "SO₂", grade: "D", ok: false,
+    r2: "1,000*", pente: "0,830", sd: "✗ NC", niveaux: "300–845 mg/Nm³ (20–56× VLE!)",
+    resume: "Variabilité non conforme (Sd=16,12 >> σ₀·Kv corrigé ≈1,38). Mais σ₀·Kv du rapport = 0,0 est une erreur labo. NC instrumentale réelle à investiguer." },
+  { ams: "Graphite 52-M", canal: "COVt", grade: "F", ok: false,
+    r2: "0,484", pente: "0,720", sd: "✗ NC", niveaux: "19–390 mg/Nm³",
+    resume: "Double non-conformité (R² et variabilité). AMS ne corrèle pas avec la SRM. Ligne de prélèvement ou filtre charbon actif probablement en cause." },
+  { ams: "MIR9000", canal: "HCl", grade: "F", ok: false,
+    r2: "0,716", pente: "0,540 !", sd: "✗ NC", niveaux: "0–18 mg/Nm³",
+    resume: "Sous-estimation 46% (adsorption sur ligne froide). Temps réponse 583s > 400s. Double défaillance — intervention ligne chauffée requise." },
+  { ams: "MIR9000", canal: "HF", grade: "F", ok: false,
+    r2: "0,049", pente: "−5,900 !!", sd: "✗ NC", niveaux: "AMS: 0,000 | SRM: 0,5–4,9 mg",
+    resume: "HF = 0,000 absolu confirmé par archives DCS (3 000 min). Adsorption totale sur sonde/ligne. Matériaux non adaptés. Calibration sans objet pour ce four." },
+];
+
+const RECOS = [
+  { prio:1, type:"LABO", label:"Contester σ₀·Kv SO₂ et HCl au COFRAC",
+    qui:"ENVEA + Exploitant", quand:"Immédiat",
+    comment:"Envoyer courrier formel à KALI'AIR et COFRAC. SO₂ : σ₀·Kv = 0,0 impossible (valeur correcte ≈ 1,38). HCl : 0,06 → ≈ 0,55. Ces erreurs sont factuellement démontrables par le calcul σ₀ = P×E/1,96 et constituent des non-conformités du rapport accrédité.",
+    impact:"Force le labo à corriger le rapport — NC reste réelle mais ratio d'écart rectifié" },
+  { prio:2, type:"LABO", label:"Contester procédure HF (Cas A + injection directe)",
+    qui:"ENVEA", quand:"Immédiat",
+    comment:"EN 14181 §6.5.1 interdit de conserver Cas A avec pente négative. EN 14181 §5.3 exige injection par tête de ligne pour le test de réponse. Deux NC de procédure du labo, opposables au COFRAC. HF = 0,000 archives DCS renforce la contestation : la calibration HF est sans objet.",
+    impact:"Remet en question la validité des conclusions HF du rapport" },
+  { prio:3, type:"AMS", label:"Intervention canal HF — MIR9000",
+    qui:"ENVEA (technicien)", quand:"< 4 semaines",
+    comment:"HF est extrêmement réactif. Sonde et ligne absorbent quasi-totalement le HF. Action : remplacer sonde + ligne par matériaux inertes HF (PTFE passivé, SS316L), vérifier T° ligne ≥ 120°C.",
+    impact:"Rétablit la mesure HF — nouveau QAL2 requis après intervention" },
+  { prio:4, type:"AMS", label:"Intervention canal HCl — MIR9000",
+    qui:"ENVEA (technicien)", quand:"< 2 semaines",
+    comment:"HCl très soluble dans l'eau → condensation sur ligne = perte 46% du signal. Inspecter ligne chauffée (condensats, joints froids), augmenter T° consigne (viser ≥ 180°C), vérifier pompe de prélèvement.",
+    impact:"Corrige le biais de pente HCl — NC corrigible par maintenance" },
+  { prio:5, type:"AMS", label:"Intervention Graphite 52-M — COVt",
+    qui:"ENVEA (technicien)", quand:"< 4 semaines",
+    comment:"Inspecter la ligne de prélèvement FID (condensation, température). Évaluer l'impact du filtre charbon actif amont. Si la prise est en aval du filtre, envisager de déplacer en amont. Comparaison SRM/AMS avec et sans filtre.",
+    impact:"Identifie si NC instrumentale ou liée au procédé (filtre charbon actif)" },
+  { prio:6, type:"AMS", label:"Vérification convertisseur NOx — MIR9000",
+    qui:"ENVEA (maintenance)", quand:"< 1 semaine",
+    comment:"Pente NOx 0,81 compatible avec convertisseur NO→NO₂ à efficacité dégradée (< 95%). Tester l'efficacité selon procédure standard. Si < 95% : remplacer. La variabilité est OK — problème limité à la calibration du canal.",
+    impact:"Améliore la pente NOx vers 0,9–1,0 — NC limitée" },
+  { prio:7, type:"AMS", label:"Diagnostic canal SO₂ — MIR9000",
+    qui:"ENVEA (technicien)", quand:"< 3 semaines",
+    comment:"Instabilité SO₂ (3 essais retirés, Sd élevé). Niveaux très élevés (300–845 mg/Nm³) peuvent saturer la cellule. Diagnostic cellule SO₂ + vérifier gamme configurée vs niveaux réels.",
+    impact:"Peut corriger l'instabilité — NC réelle mais potentiellement corrigible" },
+  { prio:8, type:"DOCS", label:"Compléter la documentation AMS (EN 14181 §5)",
+    qui:"ENVEA + Exploitant", quand:"< 6 semaines",
+    comment:"Manques : fiche de suivi AMS, synoptiques et diagrammes, procédure QAL3 (2026), procédures maintenance et formation. ENVEA bien positionné pour fournir depuis GLPI.",
+    impact:"Lève les NC documentaires — prérequis pour le prochain AST" },
+  { prio:9, type:"EXPLOIT", label:"Alerter DUOMETAL — dépassements SO₂ et CO",
+    qui:"ENVEA (recommandation)", quand:"Immédiat",
+    comment:"SO₂ : 300–845 mg/Nm³ vs VLE 15 mg/Nm³ (20–56×). CO : 160–365 mg/Nm³ vs VLE 15 mg/Nm³ (11–24×). Dépassements indépendants du QAL2 mais risque réglementaire grave. ENVEA doit documenter avoir signalé.",
+    impact:"Protection ENVEA vis-à-vis de la responsabilité — traçabilité écrite" },
+];
+
+// ══════════════════════════════════════════════════
+// RENDER BLOC 1
+// ══════════════════════════════════════════════════
+function renderBloc1() {
+  const c = document.getElementById('criteria-container');
+  CRITERES.forEach(group => {
+    const div = document.createElement('div');
+    div.className = 'criteria-group';
+    div.innerHTML = `<div class="criteria-group-title">${group.cat}</div>`;
+    group.items.forEach((item, i) => {
+      const id = `cr-${group.cat.replace(/\s/g,'')}-${i}`;
+      const stars = ['✗','△','◑','✓'];
+      const row = document.createElement('div');
+      row.className = 'criterion-row';
+      row.onclick = () => { row.classList.toggle('open'); };
+      row.innerHTML = `
+        <div class="criterion-header">
+          <span class="score-pill score-${item.score}">${item.score}/3 ${stars[item.score]}</span>
+          <span class="criterion-label">${item.label}</span>
+          <span class="expand-icon">›</span>
+        </div>
+        <div class="criterion-detail">${item.detail}</div>
+      `;
+      div.appendChild(row);
+    });
+    c.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════════════
+// RENDER BLOC 2
+// ══════════════════════════════════════════════════
+function renderBloc2() {
+  const c = document.getElementById('ams-container');
+  AMS_SCORES.forEach(a => {
+    const gradeClass = a.grade.startsWith('A') ? 'A' : a.grade.startsWith('B') ? 'B' : a.grade.startsWith('D') ? 'D' : 'F';
+    const cardClass = a.grade.startsWith('A') ? 'ok' : a.grade.startsWith('B') ? 'warn' : 'nc';
+    const div = document.createElement('div');
+    div.className = `ams-card ${cardClass}`;
+    div.innerHTML = `
+      <div class="ams-card-header">
+        <div class="grade-badge grade-${gradeClass}">${a.grade}</div>
+        <div>
+          <div class="ams-canal">${a.canal}</div>
+          <div class="ams-instrument">${a.ams}</div>
+        </div>
+      </div>
+      <div class="ams-stats">
+        <div class="ams-stat">R² <span>${a.r2}</span></div>
+        <div class="ams-stat">Pente <span>${a.pente}</span></div>
+        <div class="ams-stat">Variab. <span>${a.sd}</span></div>
+      </div>
+      <div class="ams-resume">${a.resume}</div>
+      <div class="ams-levels">${a.niveaux}</div>
+    `;
+    c.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════════════
+// RENDER BLOC 3
+// ══════════════════════════════════════════════════
+function renderBloc3() {
+  const c = document.getElementById('action-container');
+  RECOS.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'action-item';
+    div.onclick = () => div.classList.toggle('open');
+    div.innerHTML = `
+      <div class="action-prio">${r.prio}</div>
+      <div><span class="action-type-badge type-${r.type}">${r.type}</span></div>
+      <div class="action-body">
+        <div class="action-label">${r.label}</div>
+        <div class="action-comment">${r.comment}</div>
+      </div>
+      <div class="action-meta">👤 ${r.qui}<br>⏱ ${r.quand}</div>
+      <div class="action-impact">→ ${r.impact}</div>
+    `;
+    c.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════════════
+// CHARTS
+// ══════════════════════════════════════════════════
+function renderCharts() {
+  const essais = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+  const labels = essais.map(e => `E${e}`);
+
+  // CO data (exact timestamps from report)
+  const co_ams = [367.0,221.9,299.8,244.8,253.2,357.1,292.2,290.7,267.7,240.8,192.4,164.6,155.2,287.0,267.4,244.3,286.4,194.3];
+  const co_srm = [365.2,218.7,297.0,241.9,251.3,356.6,297.6,286.0,263.4,237.7,194.7,163.8,159.5,289.9,266.8,251.5,290.4,198.4];
+  const co_excl = [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true];
+
+  // NOx data
+  const nox_ams = [38.4,39.6,31.4,32.3,55.3,51.8,40.7,36.7,46.8,31.0,37.0,38.8,34.0,26.6,35.2,42.8,99.7,53.9];
+  const nox_srm = [38.6,40.2,31.5,32.5,55.3,51.9,40.4,37.1,46.9,31.1,37.0,38.6,33.9,26.8,35.1,44.0,98.6,53.3];
+  const nox_excl = [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true,true,false];
+
+  // CV data
+  const co_cv = [91,80,77,81,108,86,86,77,82,83,92,96,60,80,103,85,88,90];
+
+  // Chart colors
+  const C = {
+    amsBlue:   'rgba(27,63,122,0.75)',
+    srmRed:    'rgba(192,0,0,0.85)',
+    srmRedBg:  'rgba(192,0,0,0.12)',
+    orange:    'rgba(197,90,17,0.75)',
+    green:     'rgba(55,86,35,0.75)',
+    lightBlue: 'rgba(100,181,246,0.6)',
+  };
+
+  const gridOpts = { color: 'rgba(0,0,0,0.06)' };
+  const fontFamily = "'Segoe UI', Arial, sans-serif";
+
+  // ── CO Chart ──
+  new Chart(document.getElementById('chartCO'), {
+    data: {
+      labels,
+      datasets: [
+        { type: 'bar', label: 'AMS moyen (archives DCS)', data: co_ams,
+          backgroundColor: essais.map((_,i) => co_excl[i] ? 'rgba(200,200,200,0.5)' : C.amsBlue),
+          borderColor: essais.map((_,i) => co_excl[i] ? '#aaa' : '#1B3F7A'),
+          borderWidth: 1, borderRadius: 4, order: 2 },
+        { type: 'line', label: 'SRM rapport (yi)', data: co_srm,
+          borderColor: C.srmRed, backgroundColor: C.srmRedBg,
+          pointBackgroundColor: essais.map((_,i) => co_excl[i] ? '#aaa' : C.srmRed),
+          pointRadius: essais.map((_,i) => co_excl[i] ? 6 : 7),
+          pointStyle: essais.map((_,i) => co_excl[i] ? 'crossRot' : 'circle'),
+          pointBorderWidth: essais.map((_,i) => co_excl[i] ? 3 : 2),
+          borderWidth: 2, tension: 0.3, fill: true, order: 1 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { font: { family: fontFamily, size: 12 } } },
+        tooltip: { callbacks: {
+          label: (ctx) => {
+            const e = essais[ctx.dataIndex];
+            const excl = co_excl[ctx.dataIndex];
+            return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} mg/Nm³${excl ? ' [EXCLU]' : ''}`;
+          }
+        }}
+      },
+      scales: {
+        x: { grid: gridOpts, ticks: { font: { family: fontFamily, size: 11 } } },
+        y: { grid: gridOpts, title: { display: true, text: 'CO (mg/Nm³ · normalisé 11% O₂)', font: { family: fontFamily } },
+             ticks: { font: { family: fontFamily, size: 11 } } }
+      }
+    }
+  });
+
+  // ── NOx Chart ──
+  new Chart(document.getElementById('chartNOx'), {
+    data: {
+      labels,
+      datasets: [
+        { type: 'bar', label: 'AMS moyen (archives DCS)', data: nox_ams,
+          backgroundColor: essais.map((_,i) => nox_excl[i] ? 'rgba(200,200,200,0.5)' : 'rgba(68,114,196,0.75)'),
+          borderColor: essais.map((_,i) => nox_excl[i] ? '#aaa' : '#4472C4'),
+          borderWidth: 1, borderRadius: 4, order: 2 },
+        { type: 'line', label: 'SRM rapport (yi)', data: nox_srm,
+          borderColor: C.srmRed, backgroundColor: 'rgba(192,0,0,0.08)',
+          pointBackgroundColor: essais.map((_,i) => nox_excl[i] ? '#aaa' : C.srmRed),
+          pointRadius: essais.map((_,i) => nox_excl[i] ? 6 : 7),
+          pointStyle: essais.map((_,i) => nox_excl[i] ? 'crossRot' : 'circle'),
+          pointBorderWidth: 2, borderWidth: 2, tension: 0.3, fill: true, order: 1 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { font: { family: fontFamily, size: 12 } } },
+      },
+      scales: {
+        x: { grid: gridOpts, ticks: { font: { family: fontFamily, size: 11 } } },
+        y: { grid: gridOpts, title: { display: true, text: 'NOx (mg/Nm³ · normalisé 11% O₂)', font: { family: fontFamily } },
+             ticks: { font: { family: fontFamily, size: 11 } } }
+      }
+    }
+  });
+
+  // ── CV Chart ──
+  new Chart(document.getElementById('chartCV'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'CV CO = σ/μ (%)',
+        data: co_cv,
+        backgroundColor: co_cv.map(v => v > 80 ? 'rgba(192,0,0,0.75)' : v > 50 ? 'rgba(197,90,17,0.7)' : 'rgba(55,86,35,0.65)'),
+        borderRadius: 4, borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        annotation: {},
+        tooltip: { callbacks: { label: ctx => `CV = ${ctx.parsed.y}%` } }
+      },
+      scales: {
+        x: { grid: gridOpts, ticks: { font: { family: fontFamily, size: 11 } } },
+        y: {
+          grid: gridOpts,
+          title: { display: true, text: 'CV = σ/μ (%)', font: { family: fontFamily } },
+          max: 120,
+          ticks: { font: { family: fontFamily, size: 11 }, callback: v => v+'%' }
+        }
+      }
+    }
+  });
+
+  // ── O2 Distribution + facteur ──
+  const o2_bins = ['17–17.5','17.5–18','18–18.5','18.5–19','19–19.5','19.5–20','20–20.5','20.5–21'];
+  const o2_counts = [18, 45, 120, 280, 390, 520, 1100, 240];
+  const factors = [5.71, 5.26, 4.88, 4.55, 4.26, 4.00, 3.77, 3.56];
+  new Chart(document.getElementById('chartO2'), {
+    data: {
+      labels: o2_bins,
+      datasets: [
+        { type:'bar', label:'Fréquence (min)', data: o2_counts,
+          backgroundColor: 'rgba(55,86,35,0.65)', borderRadius: 3, yAxisID:'y1' },
+        { type:'line', label:'Facteur normalisation →', data: factors,
+          borderColor: 'rgba(192,0,0,0.85)', backgroundColor: 'rgba(192,0,0,0.08)',
+          pointRadius: 5, borderWidth: 2.5, tension: 0.3, yAxisID:'y2', fill: true }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: { family: fontFamily, size: 11 } } } },
+      scales: {
+        x: { grid: gridOpts, ticks: { font: { family: fontFamily, size: 10 }, maxRotation: 30 } },
+        y1: { position:'left', grid: gridOpts, title: { display:true, text:'Minutes', font:{family:fontFamily} },
+              ticks: { font: { family: fontFamily, size: 11 } } },
+        y2: { position:'right', title: { display:true, text:'Facteur O₂', color:'rgba(192,0,0,0.85)',
+              font:{family:fontFamily} }, grid:{display:false},
+              ticks: { color:'rgba(192,0,0,0.85)', font:{family:fontFamily,size:11} },
+              min:3, max:7 }
+      }
+    }
+  });
+
+  // ── HF Chart ──
+  const hf_labels = ['< 0,001','0,001–0,01','0,01–0,05','0,05–0,1','0,1–0,5','> 0,5'];
+  const hf_counts = [2840, 120, 30, 5, 3, 2];
+  new Chart(document.getElementById('chartHF'), {
+    type: 'bar',
+    data: {
+      labels: hf_labels,
+      datasets: [{
+        label: 'Minutes dans cette plage HF',
+        data: hf_counts,
+        backgroundColor: hf_counts.map((_,i) => i===0 ? 'rgba(55,86,35,0.7)' : 'rgba(192,0,0,0.7)'),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: ctx => `${ctx.parsed.y} min (${(ctx.parsed.y/3000*100).toFixed(1)}% campagne)`
+        }}
+      },
+      scales: {
+        x: { grid: gridOpts, title:{display:true,text:'Plage HF (mg/Nm³)',font:{family:fontFamily}},
+             ticks:{font:{family:fontFamily,size:11}} },
+        y: { grid: gridOpts, type:'logarithmic',
+             title:{display:true,text:'Fréquence (min) — échelle log',font:{family:fontFamily}},
+             ticks:{font:{family:fontFamily,size:11}} }
+      }
+    }
+  });
+
+  // ── Radar Chart ──
+  new Chart(document.getElementById('chartRadar'), {
+    type: 'radar',
+    data: {
+      labels: ['CO','Poussières','O₂','NOx','SO₂','COVt','HCl','HF'],
+      datasets: [{
+        label: 'Score normalisé (100=parfait)',
+        data: [95, 90, 75, 68, 30, 15, 20, 5],
+        backgroundColor: 'rgba(27,63,122,0.2)',
+        borderColor: '#1B3F7A',
+        pointBackgroundColor: [
+          '#375623','#375623','#7B6000','#7B6000','#C55A11','#C00000','#C00000','#C00000'
+        ],
+        pointRadius: 6, borderWidth: 2.5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          grid: { color: 'rgba(0,0,0,0.1)' },
+          ticks: { stepSize: 25, font: { family: fontFamily, size: 10 } },
+          pointLabels: { font: { family: fontFamily, size: 12, weight:'bold' } }
+        }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════════
+let chartsRendered = false;
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.kpi-card').forEach(k => k.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'bloc1') document.getElementById('kpi1').classList.add('active');
+  if (name === 'bloc2') document.getElementById('kpi2').classList.add('active');
+  if (name === 'bloc3') document.getElementById('kpi3').classList.add('active');
+  if (name === 'graphiques' && !chartsRendered) {
+    chartsRendered = true;
+    setTimeout(renderCharts, 50);
+  }
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+renderBloc1();
+renderBloc2();
+renderBloc3();
+</script>
+</body>
+</html>
