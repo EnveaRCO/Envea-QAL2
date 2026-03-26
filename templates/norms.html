@@ -1,0 +1,140 @@
+{% extends "layout.html" %}
+{% block title %}Normes en vigueur — ENVEA QAL2 Analyser{% endblock %}
+{% block content %}
+
+<h4 class="fw-bold mb-1"><i class="bi bi-book me-2" style="color:var(--envea-orange)"></i>Normes &amp; Accréditations</h4>
+<p class="text-muted small mb-4">Références normatives en vigueur · Vérification COFRAC</p>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-journal-bookmark me-2"></i>Normes de référence QAL2</div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead><tr><th>Norme</th><th>Version</th><th>Référence complète</th><th>Rôle</th></tr></thead>
+          <tbody>
+            {% for n in norms %}
+            <tr>
+              <td><strong>{{ n.norm }}</strong></td>
+              <td><span class="badge bg-success">{{ n.current_version }}</span></td>
+              <td class="small text-muted">{{ n.reference }}</td>
+              <td class="small">
+                {% if 'EN 14181' in n.norm %}Norme principale QAL2/AST
+                {% elif 'X43-132' in n.norm %}Guide d'application français
+                {% elif '13284' in n.norm %}SRM poussières
+                {% elif '16911' in n.norm %}SRM vitesse/débit
+                {% elif '14884' in n.norm %}SRM mercure
+                {% elif '15259' in n.norm %}Conditions de mesure
+                {% elif '17025' in n.norm %}Accréditation laboratoires
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer text-muted small">
+        <i class="bi bi-info-circle me-1"></i>
+        Versions mises à jour manuellement. Pour vérifier les dernières versions, consultez le
+        <a href="https://www.boutique.afnor.org" target="_blank">catalogue AFNOR</a>.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-clock-history me-2"></i>Dernières vérifications COFRAC</div>
+      <div class="card-body p-0">
+        {% if last_checks %}
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Date</th><th>Source</th><th>Résultat</th></tr></thead>
+          <tbody>
+            {% for check in last_checks %}
+            {% set res = check.result_json|tojson %}
+            <tr>
+              <td class="small text-muted">{{ check.checked_at[:16] }}</td>
+              <td><span class="badge bg-secondary">{{ check.source }}</span></td>
+              <td class="small">{{ check.result_json[:80] }}...</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="p-3 text-muted text-center small">Aucune vérification effectuée.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-patch-check me-2"></i>Vérification accréditation COFRAC</div>
+      <div class="card-body">
+        <p class="small text-muted mb-3">Vérifiez si un laboratoire est bien accrédité COFRAC pour les émissions industrielles (portée ES-A).</p>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">N° accréditation COFRAC</label>
+          <input type="text" id="cofracNum" class="form-control form-control-sm" placeholder="Ex: 1-1848">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Nom du laboratoire</label>
+          <input type="text" id="cofracLabo" class="form-control form-control-sm" placeholder="Ex: KALI'AIR">
+        </div>
+        <button class="btn btn-warning w-100" onclick="checkCofrac()">
+          <i class="bi bi-search me-2"></i>Vérifier l'accréditation
+        </button>
+        <div id="cofracResult" class="mt-3 d-none"></div>
+        <div class="mt-3 p-2 bg-light rounded small text-muted">
+          <i class="bi bi-info-circle me-1"></i>
+          La vérification ouvre un lien direct vers le répertoire COFRAC.
+          Vous devez confirmer manuellement que la portée inclut les émissions atmosphériques.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-calendar-check me-2"></i>Fréquences réglementaires</div>
+      <div class="card-body small">
+        <table class="table table-sm table-borderless mb-0">
+          <thead><tr><th>Type</th><th>Fréquence</th><th>Réf.</th></tr></thead>
+          <tbody>
+            <tr><td>QAL2 (incinération AM 20/09/2002)</td><td><strong>≤ 3 ans</strong></td><td class="norm-ref">NF EN 14181</td></tr>
+            <tr><td>QAL2 (combustion AM 03/08/2018)</td><td><strong>≤ 5 ans</strong></td><td class="norm-ref">NF EN 14181</td></tr>
+            <tr><td>AST annuel</td><td><strong>1/an</strong></td><td class="norm-ref">NF EN 14181 §7</td></tr>
+            <tr><td>QAL3 cartes contrôle</td><td><strong>En continu</strong></td><td class="norm-ref">NF EN 14181 §6</td></tr>
+            <tr><td>QAL2 après changement AMS</td><td><strong>< 6 mois</strong></td><td class="norm-ref">NF EN 14181 §5.1</td></tr>
+            <tr><td>QAL2 après échec AST</td><td><strong>Immédiat</strong></td><td class="norm-ref">NF EN 14181 §7.4</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+async function checkCofrac() {
+  const num = document.getElementById('cofracNum').value.trim();
+  const labo = document.getElementById('cofracLabo').value.trim();
+  if (!num && !labo) { alert('Saisissez un numéro ou un nom de labo.'); return; }
+
+  const res = await fetch('/api/cofrac-check', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({cofrac_number: num, labo: labo})
+  });
+  const data = await res.json();
+  const el = document.getElementById('cofracResult');
+  el.classList.remove('d-none');
+  if (data.status === 'site_ok' || data.status === 'site_accessible') {
+    el.innerHTML = `<div class="alert alert-success py-2">
+      <i class="bi bi-check-circle me-2"></i>${data.message}
+      ${data.url ? '<br><a href="'+data.url+'" target="_blank" class="btn btn-sm btn-success mt-2"><i class="bi bi-box-arrow-up-right me-1"></i>Voir sur cofrac.fr</a>' : ''}
+    </div>`;
+  } else {
+    el.innerHTML = `<div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle me-2"></i>${data.message}</div>`;
+  }
+  // Ouvrir directement le lien COFRAC
+  if (num) {
+    window.open(`https://www.cofrac.fr/accreditations/les-organismes-accredites/?numero=${num}`, '_blank');
+  }
+}
+</script>
+{% endblock %}
