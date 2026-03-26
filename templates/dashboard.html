@@ -1,0 +1,177 @@
+{% extends "layout.html" %}
+{% block title %}Tableau de bord — ENVEA QAL2 Analyser{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-0 fw-bold"><i class="bi bi-grid-3x3-gap me-2" style="color:var(--envea-orange)"></i>Tableau de bord</h4>
+    <small class="text-muted">Historique des analyses QAL2 / AST</small>
+  </div>
+  <a href="/upload" class="btn btn-warning fw-semibold"><i class="bi bi-plus-circle me-2"></i>Nouvelle analyse</a>
+</div>
+
+<!-- Stats rapides -->
+{% if stats and stats['total'] > 0 %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3">
+      <div class="icon-stat"><i class="bi bi-file-earmark-text" style="color:var(--envea-orange)"></i></div>
+      <div class="fs-3 fw-bold">{{ stats['total'] }}</div>
+      <div class="text-muted small">Analyses enregistrées</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3">
+      <div class="icon-stat"><i class="bi bi-star-fill" style="color:#f39c12"></i></div>
+      <div class="fs-3 fw-bold">{{ '%.1f'|format(stats['avg_rapport'] or 0) }}/5</div>
+      <div class="text-muted small">Qualité rapport (moy.)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3">
+      <div class="icon-stat"><i class="bi bi-cpu" style="color:var(--envea-orange)"></i></div>
+      <div class="fs-3 fw-bold">{{ '%.1f'|format(stats['avg_ams'] or 0) }}/5</div>
+      <div class="text-muted small">Performance AMS (moy.)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3">
+      <div class="icon-stat"><i class="bi bi-exclamation-triangle" style="color:#c0392b"></i></div>
+      <div class="fs-3 fw-bold text-danger">{{ stats['total_invalid'] or 0 }}</div>
+      <div class="text-muted small">Canaux non conformes (cumul)</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Barre de recherche -->
+<div class="card mb-4">
+  <div class="card-body py-2">
+    <form method="GET" action="/" class="d-flex gap-2">
+      <input type="text" name="q" class="form-control" placeholder="Rechercher par client, dossier, labo, ville..." value="{{ search or '' }}">
+      <button class="btn btn-warning px-4" type="submit"><i class="bi bi-search me-1"></i>Rechercher</button>
+      {% if search %}<a href="/" class="btn btn-outline-secondary">Effacer</a>{% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- Liste des analyses -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-clock-history me-2"></i>
+      {% if search %}Résultats pour "{{ search }}" ({{ analyses|length }}){% else %}Analyses récentes{% endif %}
+    </span>
+    <span class="text-muted small">{{ analyses|length }} résultat(s)</span>
+  </div>
+
+  {% if analyses %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Dossier</th>
+          <th>Client</th>
+          <th>Installation</th>
+          <th>Labo</th>
+          <th>Type</th>
+          <th>Rapport</th>
+          <th>AMS</th>
+          <th>Canaux</th>
+          <th>Actions</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in analyses %}
+        <tr class="{% if a['score_ams'] and a['score_ams'] < 2.5 %}table-danger{% elif a['score_ams'] and a['score_ams'] < 3.5 %}table-warning{% endif %}">
+          <td class="text-muted small">{{ a['id'] }}</td>
+          <td class="small text-nowrap">{{ a['created_at'][:10] }}</td>
+          <td><strong>{{ a['dossier'] or '—' }}</strong></td>
+          <td>{{ a['client'] or '—' }}</td>
+          <td class="small">{{ (a['installation'] or '')[:25] }}{% if a['ville'] %}<br><span class="text-muted">{{ a['ville'] }}</span>{% endif %}</td>
+          <td class="small">{{ a['labo'] or '—' }}</td>
+          <td>
+            <span class="badge {% if a['type_rapport']=='AST' %}bg-info text-dark{% else %}bg-primary{% endif %}">
+              {{ a['type_rapport'] or 'QAL2' }}
+            </span>
+          </td>
+          <td>
+            {% if a['score_rapport'] %}
+            <span class="score-pill {{ 'ok' if a['score_rapport']>=4 else ('warn' if a['score_rapport']>=3 else 'danger') }}">
+              {{ '%.1f'|format(a['score_rapport']) }}/5
+            </span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if a['score_ams'] %}
+            <span class="score-pill {{ 'ok' if a['score_ams']>=4 else ('warn' if a['score_ams']>=3 else 'danger') }}">
+              {{ '%.1f'|format(a['score_ams']) }}/5
+            </span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="small">
+            {% if a['nb_valid'] is not none %}
+            <span class="text-success fw-bold">{{ a['nb_valid'] }}✓</span>
+            <span class="text-muted mx-1">/</span>
+            <span class="text-danger fw-bold">{{ a['nb_invalid'] }}✗</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="small text-muted">{{ a['nb_actions'] or 0 }} actions</td>
+          <td class="text-nowrap">
+            <a href="/analyse/{{ a['id'] }}" class="btn btn-sm btn-outline-primary me-1" title="Voir l'analyse"><i class="bi bi-eye"></i></a>
+            <a href="/analyse/{{ a['id'] }}/export" class="btn btn-sm btn-outline-secondary me-1" title="Exporter HTML"><i class="bi bi-download"></i></a>
+            <button class="btn btn-sm btn-outline-danger"
+                    onclick="confirmDelete({{ a['id'] }}, '{{ a['client'] or a['dossier'] or '#'+a['id']|string }}')"
+                    title="Supprimer"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
+    {% if search %}
+    <p>Aucun résultat pour "{{ search }}".</p>
+    <a href="/" class="btn btn-outline-secondary btn-sm">Voir toutes les analyses</a>
+    {% else %}
+    <p class="mb-3">Aucune analyse enregistrée pour le moment.</p>
+    <a href="/upload" class="btn btn-warning"><i class="bi bi-plus-circle me-2"></i>Analyser votre premier QAL2</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal confirmation suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h6 class="modal-title"><i class="bi bi-trash me-2"></i>Confirmer la suppression</h6>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">Supprimer l'analyse de <strong id="deleteTarget"></strong> ?<br>
+        <small class="text-muted">Cette action est irréversible.</small></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+        <form id="deleteForm" method="POST">
+          <button class="btn btn-danger btn-sm">Supprimer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function confirmDelete(id, name) {
+  document.getElementById('deleteTarget').textContent = name;
+  document.getElementById('deleteForm').action = '/analyse/' + id + '/delete';
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}
