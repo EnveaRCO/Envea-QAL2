@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: envea-qal2-analyser
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --timeout 120
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true          # Render génère automatiquement
+      - key: ACCESS_PASSWORD
+        value: envea2025             # ← CHANGER avant déploiement
+      - key: ANTHROPIC_API_KEY
+        value: ""                    # ← Renseigner si disponible
+      - key: FLASK_DEBUG
+        value: "0"
+    disk:
+      name: qal2-data
+      mountPath: /data
+      sizeGB: 1                      # Disque persistant pour SQLite
