@@ -1,0 +1,360 @@
+{% extends "layout.html" %}
+{% block title %}{{ analysis.meta.dossier or 'Analyse' }} — ENVEA QAL2 Analyser{% endblock %}
+{% set meta = analysis.meta %}
+{% set rapport = analysis.rapport %}
+{% set channels = analysis.ams_channels %}
+{% set actions = analysis.actions %}
+{% block content %}
+
+<!-- En-tête rapport -->
+<div class="card mb-4" style="border-left:5px solid var(--envea-orange);">
+  <div class="card-body py-3">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h4 class="mb-1 fw-bold">{{ meta.type_rapport or 'QAL2' }} — {{ meta.client or '—' }}</h4>
+        <div class="d-flex flex-wrap gap-3 text-muted small">
+          <span><i class="bi bi-folder2-open me-1"></i><strong>{{ meta.dossier or '✓' }}</strong></span>
+          <span><i class="bi bi-building me-1"></i>{{ meta.labo or '—' }}</span>
+          <span><i class="bi bi-geo-alt me-1"></i>{{ meta.installation or '' }}{% if meta.ville %} · {{ meta.ville }}{% endif %}</span>
+          <span><i class="bi bi-calendar3 me-1"></i>{{ meta.dates or '—' }}</span>
+          {% if meta.labo_cofrac %}<span><i class="bi bi-patch-check me-1 text-success"></i>COFRAC n°{{ meta.labo_cofrac }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="col-md-4 text-end">
+        <div class="d-flex gap-2 justify-content-end">
+          <a href="/analyse/{{ row.id }}/export" class="btn btn-sm btn-outline-secondary"><i class="bi bi-download me-1"></i>Exporter</a>
+          {% if has_claude %}<button class="btn btn-sm btn-warning" id="claudeBtn" onclick="runClaude()"><i class="bi bi-robot me-1"></i>Analyse IA</button>{% endif %}
+          <button class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer me-1"></i>Imprimer</button>
+        </div>
+        {% if row.parse_confidence < 60 %}
+        <div class="mt-2"><span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Extraction partielle ({{ row.parse_confidence }}%) — vérifiez les données</span></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3 Blocs résumé -->
+<div class="row g-3 mb-4">
+  <!-- Rapport labo -->
+  <div class="col-md-4">
+    <div class="card h-100" style="border-top:4px solid {% if analysis.score_rapport>=4 %}var(--vert){% elif analysis.score_rapport>=3 %}var(--envea-orange){% else %}var(--rouge){% endif %};">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-semibold mb-1"><i class="bi bi-file-text me-1"></i>Fiabilité Rapport Labo</div>
+        <div class="d-flex align-items-baseline gap-2">
+          <span class="fs-2 fw-bold">{{ '%.1f'|format(analysis.score_rapport) }}</span>
+          <span class="text-muted">/5</span>
+        </div>
+        <div style="color:#f39c12;font-size:1.1rem;">{{ rapport.score_stars }}</div>
+        <div class="small mt-1 text-muted">{{ rapport.anomalies }} point(s) à vérifier · {{ rapport.errors }} erreur(s)</div>
+      </div>
+    </div>
+  </div>
+  <!-- AMS -->
+  <div class="col-md-4">
+    <div class="card h-100" style="border-top:4px solid {% if analysis.score_ams>=4 %}var(--vert){% elif analysis.score_ams>=3 %}var(--envea-orange){% else %}var(--rouge){% endif %};">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-semibold mb-1"><i class="bi bi-cpu me-1"></i>Performance AMS</div>
+        <div class="d-flex align-items-baseline gap-2">
+          <span class="fs-2 fw-bold">{{ '%.1f'|format(analysis.score_ams) }}</span>
+          <span class="text-muted">/5</span>
+        </div>
+        <div style="color:#f39c12;font-size:1.1rem;">{{ rapport.score_stars }}</div>
+        <div class="small mt-1">
+          <span class="text-success fw-bold">{{ analysis.nb_valid }}✓ conformes</span>
+          <span class="text-muted mx-1">/</span>
+          <span class="text-danger fw-bold">{{ analysis.nb_invalid }}✗ invalides</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Plan d'action -->
+  <div class="col-md-4">
+    <div class="card h-100" style="border-top:4px solid var(--vert);">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-semibold mb-1"><i class="bi bi-list-check me-1"></i>Plan d'Action</div>
+        <div class="d-flex align-items-baseline gap-2">
+          <span class="fs-2 fw-bold">{{ analysis.nb_actions }}</span>
+          <span class="text-muted">recommandations</span>
+        </div>
+        <div style="color:#f39c12;font-size:1.1rem;">●●●●●</div>
+        <div class="small mt-1">
+          <span class="text-danger fw-bold">{{ analysis.nb_urgent }} P1 urgentes</span>
+          <span class="text-muted mx-1">·</span>
+          <span class="text-muted">{{ analysis.nb_actions - analysis.nb_urgent }} P2/P3</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Analyse IA (si disponible) -->
+{% if analysis.claude_analysis %}
+<div class="card mb-4 border-warning">
+  <div class="card-header bg-warning bg-opacity-25"><i class="bi bi-robot me-2"></i><strong>Analyse experte IA (Claude)</strong> <small class="text-muted">{{ analysis.claude_analyzed_at[:10] if analysis.claude_analyzed_at else '' }}</small></div>
+  <div class="card-body"><p class="mb-0" style="white-space:pre-wrap;font-size:.88rem;">{{ analysis.claude_analysis }}</p></div>
+</div>
+{% endif %}
+<div class="card mb-4 d-none" id="claudeResultCard">
+  <div class="card-header bg-warning bg-opacity-25"><i class="bi bi-robot me-2"></i><strong>Analyse experte IA (Claude)</strong></div>
+  <div class="card-body"><div id="claudeResultText" style="white-space:pre-wrap;font-size:.88rem;"></div></div>
+</div>
+
+<!-- Onglets -->
+<ul class="nav nav-tabs" id="resultTabs">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#t-rapport"><i class="bi bi-file-text me-1"></i>Rapport labo</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-ams"><i class="bi bi-cpu me-1"></i>Canaux AMS</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-actions"><i class="bi bi-list-check me-1"></i>Plan d'action</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-notes" id="tabNotes"><i class="bi bi-sticky me-1"></i>Notes</button></li>
+</ul>
+
+<div class="tab-content bg-white border border-top-0 rounded-bottom p-4" style="border-radius:0 0 10px 10px!important;">
+
+<!-- ONGLET RAPPORT LABO -->
+<div class="tab-pane fade show active" id="t-rapport">
+  <h6 class="section-title mb-3">Critères de fiabilité — NF EN 14181 + NF EN ISO/IEC 17025</h6>
+  <div class="table-responsive mb-4">
+    <table class="table table-sm table-hover">
+      <thead><tr><th style="width:60px">Statut</th><th>Critère</th><th>Référence normative</th></tr></thead>
+      <tbody>
+        {% for c in rapport.criteres %}
+        <tr>
+          <td>
+            {% if c.status == 'ok' %}<span class="badge bg-success">✓ OK</span>
+            {% elif c.status == 'partial' %}<span class="badge bg-warning text-dark">△ Partiel</span>
+            {% else %}<span class="badge bg-danger">✗ Erreur</span>{% endif %}
+          </td>
+          <td>{{ c.label }}</td>
+          <td class="norm-ref">{{ c.ref }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-muted text-center">Analyse non disponible</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Tableau synthèse polluants -->
+  <h6 class="section-title mb-3">Synthèse coefficients d'étalonnage</h6>
+  <div class="info-box mb-3 small">
+    <strong>Guide codes :</strong>
+    <strong>Strat.</strong> = stratégie AMS (EN 14181) : <code>A1</code>=avec QAL1, <code>A2</code>=sans QAL1, <code>B</code>=opacimètre ·
+    <strong>Cas</strong> = procédure étalonnage (XP X43-132) : <code>A</code>=régression standard, <code>B</code>=forcée zéro, <code>C</code>=niveau faible
+  </div>
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Polluant</th><th>Strat.</th><th>Cas</th>
+          <th>a (pente)</th><th>Critère pente</th>
+          <th>b</th><th>R²</th><th>Sd</th><th>1.5σKv</th>
+          <th>Variabilité</th><th>Retirés</th><th>Verdict</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ch in channels %}
+        <tr class="{% if ch.valid %}status-valid{% else %}status-invalid{% endif %}">
+          <td><strong>{{ ch.name_raw or ch.name | upper }}</strong>
+            {% if not ch.regulated %}<br><small class="text-muted">(connexe)</small>{% endif %}
+          </td>
+          <td>{% if ch.strategy %}<span class="badge bg-secondary">{{ ch.strategy }}</span>{% else %}—{% endif %}</td>
+          <td>{% if ch.cas %}<span class="badge bg-secondary">{{ ch.cas }}</span>{% else %}—{% endif %}</td>
+          <td class="{% if ch.a and ch.a < 0 %}text-danger fw-bold{% endif %}">{{ ch.a if ch.a is not none else '—' }}</td>
+          <td>
+            {% if ch.a is not none %}
+              {% if ch.a < 0 %}<span class="badge bg-danger">✗ Négatif</span>
+              {% elif ch.a < 0.9 %}<span class="badge bg-warning text-dark">△ &lt;0.9</span>
+              {% elif ch.a > 1.2 %}<span class="badge bg-warning text-dark">△ &gt;1.2</span>
+              {% else %}<span class="badge bg-success">✓</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ ch.b if ch.b is not none else '—' }}</td>
+          <td class="{% if ch.r2 is not none and ch.r2 < 0.8 %}text-danger{% elif ch.r2 is not none and ch.r2 < 0.9 %}text-warning{% endif %}">
+            {{ ch.r2 if ch.r2 is not none else '—' }}
+          </td>
+          <td>{{ ch.sd if ch.sd is not none else '—' }}</td>
+          <td class="{% if ch.kv_threshold == 0 %}text-danger fw-bold{% endif %}">
+            {{ ch.kv_threshold if ch.kv_threshold is not none else '—' }}
+            {% if ch.kv_threshold == 0 %}<i class="bi bi-exclamation-triangle text-danger" title="Valeur suspecte !"></i>{% endif %}
+          </td>
+          <td>
+            {% if ch.sd is not none and ch.kv_threshold is not none %}
+              {% if ch.kv_threshold == 0 %}<span class="badge bg-danger">Anomalie calcul</span>
+              {% elif ch.sd <= ch.kv_threshold %}<span class="badge bg-success">Conforme</span>
+              {% else %}<span class="badge bg-danger">NON conf.</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ ch.essais_retires or 0 }}{% if (ch.essais_retires or 0) > 2 %} <span class="text-danger">⚠</span>{% endif %}</td>
+          <td>
+            {% if ch.valid %}<span class="badge bg-success">VALIDE</span>
+            {% elif ch.valid == false %}<span class="badge bg-danger">INVALIDE</span>
+            {% else %}<span class="badge bg-secondary">?</span>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="12" class="text-center text-muted py-3">
+          <i class="bi bi-exclamation-circle me-2"></i>Données polluants non extraites du PDF.
+          <a href="/upload">Ressaisir manuellement →</a>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ONGLET AMS CANAUX -->
+<div class="tab-pane fade" id="t-ams">
+  <h6 class="section-title mb-3">Analyse détaillée par canal AMS</h6>
+  {% if channels %}
+  <div class="row g-3">
+    {% for ch in channels %}
+    <div class="col-md-6">
+      <div class="card h-100" style="border-left:4px solid {% if ch.valid %}var(--vert){% else %}var(--rouge){% endif %};">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+          <strong>{{ ch.name_raw or ch.name | upper }}</strong>
+          <div class="d-flex gap-1">
+            {% if ch.regulated %}<span class="badge bg-dark" title="Polluant réglementé">RÉGL.</span>{% else %}<span class="badge bg-secondary">CONN.</span>{% endif %}
+            {% if ch.valid %}<span class="badge bg-success">VALIDE</span>{% elif ch.valid == false %}<span class="badge bg-danger">INVALIDE</span>{% endif %}
+          </div>
+        </div>
+        <div class="card-body py-2 small">
+          <div class="row g-1 mb-2 text-center">
+            <div class="col-3"><div class="fw-bold">{{ ch.a if ch.a is not none else '?' }}</div><div class="text-muted" style="font-size:.7rem">pente a</div></div>
+            <div class="col-3"><div class="fw-bold">{{ ch.b if ch.b is not none else '?' }}</div><div class="text-muted" style="font-size:.7rem">intercept b</div></div>
+            <div class="col-3"><div class="fw-bold {% if ch.r2 is not none and ch.r2 < 0.8 %}text-danger{% elif ch.r2 is not none and ch.r2 < 0.9 %}text-warning{% endif %}">{{ ch.r2 if ch.r2 is not none else '?' }}</div><div class="text-muted" style="font-size:.7rem">R²</div></div>
+            <div class="col-3"><div class="fw-bold {% if ch.sd is not none and ch.kv_threshold and ch.sd > ch.kv_threshold %}text-danger{% else %}text-success{% endif %}">{{ ch.sd if ch.sd is not none else '?' }}</div><div class="text-muted" style="font-size:.7rem">Sd</div></div>
+          </div>
+          {% if ch.issues %}
+          <div class="mt-1">
+            {% for issue in ch.issues %}
+            <div class="d-flex gap-1 mb-1">
+              <span class="{% if issue.severity=='critical' %}text-danger{% elif issue.severity=='error' %}text-danger{% else %}text-warning{% endif %}" style="font-size:.85rem;">
+                {% if issue.severity=='critical' %}🔴{% elif issue.severity=='error' %}🟠{% else %}🟡{% endif %}
+              </span>
+              <span class="text-dark">{{ issue.label }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if ch.positive %}
+          {% for pos in ch.positive %}
+          <div class="text-success small">✓ {{ pos.label }}</div>
+          {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center text-muted py-4"><i class="bi bi-exclamation-circle me-2"></i>Données AMS non disponibles.</div>
+  {% endif %}
+</div>
+
+<!-- ONGLET PLAN D'ACTION -->
+<div class="tab-pane fade" id="t-actions">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="section-title mb-0">Plan d'action priorisé</h6>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-dark filter-btn active" data-filter="ALL">Tout</button>
+      <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="P1">🔴 P1</button>
+      <button class="btn btn-sm btn-outline-warning filter-btn" data-filter="P2">🟠 P2</button>
+      <button class="btn btn-sm btn-outline-success filter-btn" data-filter="P3">🟢 P3</button>
+      <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="AMS">AMS</button>
+      <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="LABO">LABO</button>
+      <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="DOCS">DOCS</button>
+      <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="EXPLOIT">EXPLOIT</button>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle" id="actionsTable">
+      <thead><tr><th>N°</th><th>Action</th><th>Polluant</th><th>Cible</th><th>Cat.</th><th>Priorité</th><th>Délai</th><th>Référence</th></tr></thead>
+      <tbody>
+        {% for act in actions %}
+        <tr class="{% if act.priority=='P1' %}table-danger{% elif act.priority=='P2' %}table-warning{% else %}table-success{% endif %} bg-opacity-10"
+            data-cat="{{ act.category }}" data-prio="{{ act.priority }}">
+          <td class="fw-bold text-muted small">{{ act.num }}</td>
+          <td>{{ act.action }}</td>
+          <td><span class="badge {% if act.priority=='P1' %}bg-danger{% elif act.priority=='P2' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ act.pollutant }}</span></td>
+          <td class="small text-muted">{{ act.target }}</td>
+          <td><span class="badge bg-dark">{{ act.category }}</span></td>
+          <td><span class="badge {% if act.priority=='P1' %}bg-danger{% elif act.priority=='P2' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ act.priority }}</span></td>
+          <td class="small text-nowrap">{{ act.delay }}</td>
+          <td class="norm-ref small">{{ act.ref }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-3">Aucune action générée.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ONGLET NOTES -->
+<div class="tab-pane fade" id="t-notes">
+  <h6 class="section-title mb-3">Notes technicien</h6>
+  <p class="text-muted small">Vos observations sur cette campagne, visibles par toute l'équipe.</p>
+  <textarea class="form-control mb-3" id="notesField" rows="8" placeholder="Observations, points à signaler, suites à donner...">{{ row.notes or '' }}</textarea>
+  <button class="btn btn-warning" onclick="saveNotes({{ row.id }})"><i class="bi bi-save me-2"></i>Enregistrer les notes</button>
+  <span class="text-success ms-3 d-none" id="notesSaved"><i class="bi bi-check-circle me-1"></i>Enregistré</span>
+</div>
+
+</div><!-- /tab-content -->
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+// Plan d'action filtres
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const f = this.dataset.filter;
+    document.querySelectorAll('#actionsTable tbody tr').forEach(row => {
+      if (f === 'ALL') { row.style.display = ''; return; }
+      row.style.display = (row.dataset.cat === f || row.dataset.prio === f) ? '' : 'none';
+    });
+  });
+});
+
+// Notes
+async function saveNotes(id) {
+  const notes = document.getElementById('notesField').value;
+  const res = await fetch('/analyse/' + id + '/notes', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'notes='+encodeURIComponent(notes)
+  });
+  if (res.ok) {
+    const el = document.getElementById('notesSaved');
+    el.classList.remove('d-none');
+    setTimeout(() => el.classList.add('d-none'), 3000);
+  }
+}
+
+// Claude IA
+async function runClaude() {
+  const btn = document.getElementById('claudeBtn');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyse...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/claude-analyse/{{ row.id }}', {method:'POST'});
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('claudeResultText').textContent = data.analysis;
+      document.getElementById('claudeResultCard').classList.remove('d-none');
+      btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Analyse IA';
+      btn.classList.replace('btn-warning','btn-success');
+    } else {
+      alert('Erreur : ' + data.error);
+      btn.innerHTML = '<i class="bi bi-robot me-1"></i>Analyse IA';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    alert('Erreur réseau.');
+    btn.innerHTML = '<i class="bi bi-robot me-1"></i>Analyse IA';
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}
