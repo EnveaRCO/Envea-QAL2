@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="text-center py-5">
+  <div class="display-1 text-muted">{{ code }}</div>
+  <h4>{{ 'Page introuvable' if code==404 else 'Erreur serveur' }}</h4>
+  <p class="text-muted">{{ message }}</p>
+  <a href="/" class="btn btn-warning">← Retour au tableau de bord</a>
+</div>
+{% endblock %}
