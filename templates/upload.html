@@ -1,0 +1,231 @@
+{% extends "layout.html" %}
+{% block title %}Nouvelle analyse — ENVEA QAL2 Analyser{% endblock %}
+{% block content %}
+
+<h4 class="fw-bold mb-1"><i class="bi bi-file-earmark-plus me-2" style="color:var(--envea-orange)"></i>Nouvelle analyse QAL2 / AST</h4>
+<p class="text-muted small mb-4">Déposez le rapport PDF — les données sont extraites automatiquement</p>
+
+<div class="row g-4">
+  <!-- Formulaire upload -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-upload me-2"></i>Import PDF</div>
+      <div class="card-body">
+        <form method="POST" action="/upload" enctype="multipart/form-data" id="uploadForm">
+
+          <!-- Zone drag & drop -->
+          <div class="border-2 border-dashed rounded-3 text-center p-5 mb-4"
+               id="dropZone"
+               style="border:2px dashed #dee2e6;cursor:pointer;transition:all .2s;"
+               onclick="document.getElementById('pdfInput').click()">
+            <i class="bi bi-file-earmark-pdf fs-1 d-block mb-2 text-danger"></i>
+            <strong>Glisser-déposer le rapport QAL2 ici</strong>
+            <p class="text-muted small mb-0">ou cliquer pour sélectionner · PDF uniquement · max 30 MB</p>
+            <div id="filePreview" class="mt-2 d-none">
+              <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i><span id="fileName"></span></span>
+            </div>
+          </div>
+          <input type="file" id="pdfInput" name="pdf" accept=".pdf" class="d-none" onchange="previewFile(this)">
+
+          <!-- Métadonnées (pré-remplies auto, modifiables) -->
+          <div class="alert alert-info py-2 px-3 small mb-3">
+            <i class="bi bi-magic me-1"></i>Les champs ci-dessous sont remplis automatiquement depuis le PDF. Vous pouvez les corriger si nécessaire.
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Référence dossier</label>
+              <input type="text" name="dossier" class="form-control" placeholder="Ex : CKL25-A593-PR01-V01">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Client / Exploitant</label>
+              <input type="text" name="client" class="form-control" placeholder="Ex : DUOMETAL">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Laboratoire</label>
+              <input type="text" name="labo" class="form-control" placeholder="Ex : KALI'AIR">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Installation</label>
+              <input type="text" name="installation" class="form-control" placeholder="Ex : FOUR DE BRÛLAGE">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Ville</label>
+              <input type="text" name="ville" class="form-control" placeholder="Ex : COUDUN">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Dates de campagne</label>
+              <input type="text" name="dates" class="form-control" placeholder="Ex : 28 au 30 octobre 2025">
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-warning fw-semibold px-4" id="submitBtn">
+              <i class="bi bi-play-circle me-2"></i>Lancer l'analyse
+            </button>
+            <a href="/" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panneau d'aide -->
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Formats supportés</div>
+      <div class="card-body small">
+        <p class="mb-2"><strong>Extraction automatique :</strong></p>
+        <ul class="mb-0">
+          <li>KALI'AIR (FE 11 105)</li>
+          <li>SOCOTEC / Bureau Veritas</li>
+          <li>Apave / Eurofins</li>
+          <li>Tout labo conforme NF EN 14181</li>
+        </ul>
+        <hr>
+        <p class="mb-1 text-muted">Données extraites automatiquement :</p>
+        <ul class="mb-0 text-muted">
+          <li>Client, labo, dossier, dates</li>
+          <li>Coefficients a, b, R², Sd, seuil</li>
+          <li>Verdicts et stratégies</li>
+          <li>Accréditation COFRAC</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-question-circle me-2"></i>Le PDF ne se lit pas bien ?</div>
+      <div class="card-body small">
+        <p class="mb-2">Si l'extraction automatique est incomplète :</p>
+        <ol class="mb-0">
+          <li>L'analyse se lance quand même avec les données partielles</li>
+          <li>Complétez les champs manquants dans le formulaire</li>
+          <li>Ou utilisez l'<a href="#" onclick="showManualEntry()">entrée manuelle</a></li>
+        </ol>
+        <div class="mt-2 text-muted">Les PDFs scannés (images) ne sont pas supportés — seuls les PDFs texte natifs fonctionnent.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Zone saisie manuelle (cachée par défaut) -->
+<div class="card mt-4 d-none" id="manualCard">
+  <div class="card-header"><i class="bi bi-keyboard me-2"></i>Saisie manuelle des données</div>
+  <div class="card-body">
+    <p class="text-muted small">Copiez-collez ou saisissez les données directement si le PDF n'est pas disponible.</p>
+    <div id="manualChannels">
+      <div class="row g-2 mb-2 align-items-end manual-channel">
+        <div class="col-2"><label class="form-label small">Polluant</label>
+          <select class="form-select form-select-sm">
+            <option>CO</option><option>NOx</option><option>COVt</option>
+            <option>Poussières</option><option>SO2</option><option>HCl</option>
+            <option>HF</option><option>O2</option>
+          </select></div>
+        <div class="col-1"><label class="form-label small">a (pente)</label><input type="number" class="form-control form-control-sm" step="0.001" placeholder="0.978"></div>
+        <div class="col-1"><label class="form-label small">b</label><input type="number" class="form-control form-control-sm" step="0.001" placeholder="0.908"></div>
+        <div class="col-1"><label class="form-label small">R²</label><input type="number" class="form-control form-control-sm" step="0.001" min="0" max="1" placeholder="0.99"></div>
+        <div class="col-1"><label class="form-label small">Sd</label><input type="number" class="form-control form-control-sm" step="0.01" placeholder="12.85"></div>
+        <div class="col-2"><label class="form-label small">1.5σKv (seuil)</label><input type="number" class="form-control form-control-sm" step="0.01" placeholder="19.86"></div>
+        <div class="col-2"><label class="form-label small">VLE (mg/m³)</label><input type="number" class="form-control form-control-sm" step="0.1" placeholder="15"></div>
+        <div class="col-1"><label class="form-label small">Retirés</label><input type="number" class="form-control form-control-sm" min="0" max="5" placeholder="0"></div>
+        <div class="col-1"><label class="form-label small">Valide?</label>
+          <select class="form-select form-select-sm"><option value="">Auto</option><option value="true">Oui</option><option value="false">Non</option></select></div>
+      </div>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addChannel()"><i class="bi bi-plus me-1"></i>Ajouter un polluant</button>
+    <button type="button" class="btn btn-sm btn-warning ms-2" onclick="submitManual()"><i class="bi bi-play-circle me-1"></i>Analyser ces données</button>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+// Drag & Drop
+const dropZone = document.getElementById('dropZone');
+const pdfInput = document.getElementById('pdfInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='var(--envea-orange)'; dropZone.style.background='#fff8f0'; });
+dropZone.addEventListener('dragleave', e => { dropZone.style.borderColor='#dee2e6'; dropZone.style.background=''; });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.style.borderColor='#dee2e6'; dropZone.style.background='';
+  const files = e.dataTransfer.files;
+  if (files.length > 0 && files[0].name.endsWith('.pdf')) {
+    pdfInput.files = files;
+    previewFile({files: files});
+  }
+});
+
+function previewFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('fileName').textContent = file.name + ' (' + (file.size/1024/1024).toFixed(1) + ' MB)';
+  document.getElementById('filePreview').classList.remove('d-none');
+}
+
+// Upload form avec spinner
+document.getElementById('uploadForm').addEventListener('submit', function() {
+  const btn = document.getElementById('submitBtn');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyse en cours...';
+  btn.disabled = true;
+});
+
+function showManualEntry() {
+  document.getElementById('manualCard').classList.remove('d-none');
+  document.getElementById('manualCard').scrollIntoView({behavior:'smooth'});
+}
+
+function addChannel() {
+  const tmpl = document.querySelector('.manual-channel').cloneNode(true);
+  tmpl.querySelectorAll('input').forEach(i => i.value = '');
+  document.getElementById('manualChannels').appendChild(tmpl);
+}
+
+function submitManual() {
+  const channels = [];
+  document.querySelectorAll('.manual-channel').forEach(row => {
+    const selects = row.querySelectorAll('select');
+    const inputs = row.querySelectorAll('input');
+    const name = selects[0].value.toLowerCase();
+    const a = parseFloat(inputs[0].value);
+    if (!name || isNaN(a)) return;
+    const ch = {
+      name: name,
+      a: a,
+      b: parseFloat(inputs[1].value) || null,
+      r2: parseFloat(inputs[2].value) || null,
+      sd: parseFloat(inputs[3].value) || null,
+      kv_threshold: parseFloat(inputs[4].value) || null,
+      vle: parseFloat(inputs[5].value) || null,
+      essais_retires: parseInt(inputs[6].value) || 0,
+    };
+    const v = selects[1].value;
+    if (v === 'true') ch.valid = true;
+    if (v === 'false') ch.valid = false;
+    channels.push(ch);
+  });
+
+  if (channels.length === 0) { alert('Saisissez au moins un polluant avec une pente.'); return; }
+
+  const data = {
+    meta: {
+      client: document.querySelector('[name=client]').value,
+      labo: document.querySelector('[name=labo]').value,
+      dossier: document.querySelector('[name=dossier]').value,
+      installation: document.querySelector('[name=installation]').value,
+      ville: document.querySelector('[name=ville]').value,
+      dates: document.querySelector('[name=dates]').value,
+    },
+    pollutants: channels,
+    raw_text: '',
+    parse_confidence: 50,
+  };
+
+  document.querySelector('[name=pdf]').disabled = true;
+  const hidden = document.createElement('input');
+  hidden.type = 'hidden'; hidden.name = 'manual_json';
+  hidden.value = JSON.stringify(data);
+  document.getElementById('uploadForm').appendChild(hidden);
+  document.getElementById('uploadForm').submit();
+}
+</script>
+{% endblock %}
