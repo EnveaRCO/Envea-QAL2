@@ -1,6 +1,6 @@
 """
-app.py — ENVEA QAL2 Analyser Web Application
-Flask + SQLite | Déployable sur Render.com
+app.py â ENVEA QAL2 Analyser Web Application
+Flask + SQLite | DÃ©ployable sur Render.com
 
 Usage local  : python app.py
 Render.com   : Suivre le README.md
@@ -20,7 +20,7 @@ from flask import (
 from pdf_parser import parse_pdf
 from analyzer import analyze, check_cofrac_status, check_norm_updates
 
-# ─── Configuration ─────────────────────────────────────────────────────────────
+# âââ Configuration âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "envea-qal2-secret-2025-change-me")
@@ -34,7 +34,7 @@ ALLOWED_EXTENSIONS = {"pdf"}
 
 VERSION = "1.1.0"
 
-# ─── Base de données ──────────────────────────────────────────────────────────
+# âââ Base de donnÃ©es ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -81,7 +81,7 @@ def init_db():
             );
         """)
 
-# ─── Auth simple ──────────────────────────────────────────────────────────────
+# âââ Auth simple ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def login_required(f):
     @wraps(f)
@@ -107,7 +107,7 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# ─── Dashboard ────────────────────────────────────────────────────────────────
+# âââ Dashboard ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/")
 @login_required
@@ -138,7 +138,7 @@ def dashboard():
         version=VERSION, has_claude=bool(CLAUDE_API_KEY)
     )
 
-# ─── Upload & Analyse ─────────────────────────────────────────────────────────
+# âââ Upload & Analyse âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/upload", methods=["GET", "POST"])
 @login_required
@@ -146,12 +146,12 @@ def upload():
     if request.method == "GET":
         return render_template("upload.html")
 
-    # Récupérer le fichier PDF
+    # RÃ©cupÃ©rer le fichier PDF
     pdf_file = request.files.get("pdf")
     manual_data = request.form.get("manual_json")
 
     if not pdf_file and not manual_data:
-        flash("Veuillez fournir un fichier PDF ou saisir des données manuellement.", "warning")
+        flash("Veuillez fournir un fichier PDF ou saisir des donnÃ©es manuellement.", "warning")
         return render_template("upload.html")
 
     parsed = {}
@@ -166,13 +166,13 @@ def upload():
         try:
             parsed = json.loads(manual_data)
         except Exception:
-            flash("Données JSON invalides.", "danger")
+            flash("DonnÃ©es JSON invalides.", "danger")
             return render_template("upload.html")
 
     # Analyse normative
     analysis = analyze(parsed)
 
-    # Enrichissement avec données formulaire éventuelles
+    # Enrichissement avec donnÃ©es formulaire Ã©ventuelles
     meta = analysis.get("meta", {})
     for field in ["client", "labo", "installation", "ville", "dates", "dossier"]:
         form_val = request.form.get(field, "").strip()
@@ -182,7 +182,7 @@ def upload():
     # Sauvegarde en base
     analysis_id = _save_analysis(analysis, parsed)
 
-    flash(f"Analyse enregistrée avec succès (ID #{analysis_id}).", "success")
+    flash(f"Analyse enregistrÃ©e avec succÃ¨s (ID #{analysis_id}).", "success")
     return redirect(url_for("show_analysis", analysis_id=analysis_id))
 
 
@@ -217,7 +217,7 @@ def _save_analysis(analysis: dict, parsed: dict) -> int:
         ])
         return cur.lastrowid
 
-# ─── Affichage analyse ────────────────────────────────────────────────────────
+# âââ Affichage analyse ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/analyse/<int:analysis_id>")
 @login_required
@@ -238,7 +238,7 @@ def show_analysis(analysis_id):
 def delete_analysis(analysis_id):
     with get_db() as conn:
         conn.execute("DELETE FROM analyses WHERE id=?", [analysis_id])
-    flash("Analyse supprimée.", "info")
+    flash("Analyse supprimÃ©e.", "info")
     return redirect(url_for("dashboard"))
 
 @app.route("/analyse/<int:analysis_id>/notes", methods=["POST"])
@@ -249,7 +249,7 @@ def update_notes(analysis_id):
         conn.execute("UPDATE analyses SET notes=? WHERE id=?", [notes, analysis_id])
     return jsonify({"ok": True})
 
-# ─── Export HTML ──────────────────────────────────────────────────────────────
+# âââ Export HTML ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/analyse/<int:analysis_id>/export")
 @login_required
@@ -271,18 +271,18 @@ def export_html(analysis_id):
         download_name=f"QAL2_{row['dossier'] or analysis_id}_{datetime.now().strftime('%Y%m%d')}.html"
     )
 
-# ─── API Claude ───────────────────────────────────────────────────────────────
+# âââ API Claude âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/api/claude-analyse/<int:analysis_id>", methods=["POST"])
 @login_required
 def api_claude(analysis_id):
     if not CLAUDE_API_KEY:
-        return jsonify({"error": "Clé API Claude non configurée (variable ANTHROPIC_API_KEY)"}), 400
+        return jsonify({"error": "ClÃ© API Claude non configurÃ©e (variable ANTHROPIC_API_KEY)"}), 400
 
     with get_db() as conn:
         row = conn.execute("SELECT data_json FROM analyses WHERE id=?", [analysis_id]).fetchone()
     if not row:
-        return jsonify({"error": "Analyse non trouvée"}), 404
+        return jsonify({"error": "Analyse non trouvÃ©e"}), 404
 
     analysis = json.loads(row["data_json"])
     meta = analysis.get("meta", {})
@@ -293,29 +293,29 @@ def api_claude(analysis_id):
     for ch in channels:
         summary_lines.append(
             f"- {ch.get('name','?').upper()} : a={ch.get('a','?')}, b={ch.get('b','?')}, "
-            f"R²={ch.get('r2','?')}, Sd={ch.get('sd','?')}, seuil={ch.get('kv_threshold','?')}, "
-            f"résultat={'VALIDE' if ch.get('valid') else 'INVALIDE'}"
+            f"RÂ²={ch.get('r2','?')}, Sd={ch.get('sd','?')}, seuil={ch.get('kv_threshold','?')}, "
+            f"rÃ©sultat={'VALIDE' if ch.get('valid') else 'INVALIDE'}"
         )
 
     prompt = f"""Tu es un expert QAL2/SMEA selon NF EN 14181 et XP X43-132, au service d'ENVEA.
 
-Voici les résultats de la campagne QAL2 pour {meta.get('client','?')} ({meta.get('installation','?')} - {meta.get('ville','?')}),
-rapport {meta.get('dossier','?')}, réalisé par {meta.get('labo','?')} du {meta.get('dates','?')}.
+Voici les rÃ©sultats de la campagne QAL2 pour {meta.get('client','?')} ({meta.get('installation','?')} - {meta.get('ville','?')}),
+rapport {meta.get('dossier','?')}, rÃ©alisÃ© par {meta.get('labo','?')} du {meta.get('dates','?')}.
 
-Résultats par canal :
+RÃ©sultats par canal :
 {chr(10).join(summary_lines)}
 
-Score rapport qualité : {analysis.get('score_rapport','-')}/5
+Score rapport qualitÃ© : {analysis.get('score_rapport','-')}/5
 Score AMS : {analysis.get('score_ams','-')}/5
 Canaux valides : {analysis.get('nb_valid',0)} | Non conformes : {analysis.get('nb_invalid',0)}
 
 En tant qu'expert ENVEA, fournis une analyse narrative professionnelle (5-7 phrases) incluant :
-1. Un résumé de la situation globale
-2. Les points les plus critiques à traiter en priorité
-3. Des recommandations concrètes pour l'exploitant et le fournisseur des AMS
-4. L'impact sur la conformité réglementaire (surveillance continue ICPE)
+1. Un rÃ©sumÃ© de la situation globale
+2. Les points les plus critiques Ã  traiter en prioritÃ©
+3. Des recommandations concrÃ¨tes pour l'exploitant et le fournisseur des AMS
+4. L'impact sur la conformitÃ© rÃ©glementaire (surveillance continue ICPE)
 
-Réponds en français, de manière directe et orientée terrain. Maximum 300 mots."""
+RÃ©ponds en franÃ§ais, de maniÃ¨re directe et orientÃ©e terrain. Maximum 300 mots."""
 
     try:
         import anthropic
@@ -341,7 +341,7 @@ Réponds en français, de manière directe et orientée terrain. Maximum 300 mot
     except Exception as e:
         return jsonify({"error": f"Erreur API Claude : {str(e)}"}), 500
 
-# ─── API COFRAC ───────────────────────────────────────────────────────────────
+# âââ API COFRAC âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/api/cofrac-check", methods=["POST"])
 @login_required
@@ -359,7 +359,7 @@ def api_cofrac():
         """, [datetime.now().isoformat(), "COFRAC", json.dumps(result)])
     return jsonify(result)
 
-# ─── API Normes ───────────────────────────────────────────────────────────────
+# âââ API Normes âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/api/norms")
 @login_required
@@ -367,7 +367,7 @@ def api_norms():
     updates = check_norm_updates()
     return jsonify({"norms": updates, "checked_at": datetime.now().isoformat()})
 
-# ─── Page Normes ──────────────────────────────────────────────────────────────
+# âââ Page Normes ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/norms")
 @login_required
@@ -381,13 +381,13 @@ def norms_page():
         norms=updates, last_checks=last_checks, version=VERSION
     )
 
-# ─── Healthcheck Render ───────────────────────────────────────────────────────
+# âââ Healthcheck Render âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "version": VERSION})
 
-# ─── Error handlers ───────────────────────────────────────────────────────────
+# âââ Error handlers âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.errorhandler(404)
 def not_found(e):
@@ -402,15 +402,18 @@ def too_large(e):
 def server_error(e):
     return render_template("error.html", code=500, message=str(e)), 500
 
-# ─── Main ─────────────────────────────────────────────────────────────────────
+# âââ Main âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ─── Initialisation au démarrage (gunicorn + python app.py) ───────────────────
+init_db()
+
 
 if __name__ == "__main__":
     init_db()
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
-    print(f"🚀 ENVEA QAL2 Analyser v{VERSION} → http://localhost:{port}")
+    print(f"ð ENVEA QAL2 Analyser v{VERSION} â http://localhost:{port}")
     if CLAUDE_API_KEY:
-        print("✅ Mode IA activé (Claude API configurée)")
+        print("â Mode IA activÃ© (Claude API configurÃ©e)")
     else:
-        print("ℹ️  Mode règles normatives seul (pas de clé Claude API)")
+        print("â¹ï¸  Mode rÃ¨gles normatives seul (pas de clÃ© Claude API)")
     app.run(host="0.0.0.0", port=port, debug=debug)
