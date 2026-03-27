@@ -1,22 +1,22 @@
 """
-analyzer.py — Moteur d'analyse normatif QAL2/AST
-Références : NF EN 14181, XP X43-132, NF EN ISO/IEC 17025
+analyzer.py â Moteur d'analyse normatif QAL2/AST
+RÃ©fÃ©rences : NF EN 14181, XP X43-132, NF EN ISO/IEC 17025
 """
 import re
 import math
 from typing import Optional
 
-# ─── Critères normatifs ───────────────────────────────────────────────────────
+# âââ CritÃ¨res normatifs âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 NORM_CRITERIA = {
-    "r2_gas_min": 0.9,        # R² minimum gaz (recommandation XP X43-132)
-    "r2_dust_min": 0.8,       # R² minimum poussières
+    "r2_gas_min": 0.9,        # RÂ² minimum gaz (recommandation XP X43-132)
+    "r2_dust_min": 0.8,       # RÂ² minimum poussiÃ¨res
     "a_min": 0.9,             # Pente minimum (recommandation XP X43-132)
     "a_max": 1.2,             # Pente maximum
-    "b_vle_pct": 0.10,        # Intercept ≤ 10% VLE
-    "max_essais_retires": 2,  # Max essais retirés recommandé XP X43-132
-    "min_essais_valides": 15, # NF EN 14181 §5.2.1
-    "min_jours": 3,           # NF EN 14181 §5.2.1
+    "b_vle_pct": 0.10,        # Intercept â¤ 10% VLE
+    "max_essais_retires": 2,  # Max essais retirÃ©s recommandÃ© XP X43-132
+    "min_essais_valides": 15, # NF EN 14181 Â§5.2.1
+    "min_jours": 3,           # NF EN 14181 Â§5.2.1
     "tps_reponse_max": 200,   # secondes (gaz standards)
     "tps_reponse_hcl_hf": 400,# secondes (HCl, HF, NH3, Hg)
 }
@@ -31,14 +31,14 @@ NORM_VERSIONS = {
     "NF EN 14884": {"current": "2015", "ref": "NF EN 14884:2015"},
 }
 
-DUST_POLLUTANTS = {"poussieres", "poussières", "dust"}
+DUST_POLLUTANTS = {"poussieres", "poussiÃ¨res", "dust"}
 HCL_HF_NH3_HG = {"hcl", "hf", "nh3", "hg"}
 REGULATED_BY_DEFAULT = {"co", "nox", "covt", "poussieres", "so2", "hcl", "hf"}
 
-# ─── Analyse principale ────────────────────────────────────────────────────────
+# âââ Analyse principale ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def analyze(parsed_data: dict) -> dict:
-    """Analyse complète d'un rapport QAL2 parsé."""
+    """Analyse complÃ¨te d'un rapport QAL2 parsÃ©."""
     meta = parsed_data.get("meta", {})
     pollutants = parsed_data.get("pollutants", [])
     raw_text = parsed_data.get("raw_text", "")
@@ -77,78 +77,78 @@ def analyze(parsed_data: dict) -> dict:
     }
 
 
-# ─── Analyse rapport ──────────────────────────────────────────────────────────
+# âââ Analyse rapport ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _analyze_rapport(meta: dict, pollutants: list, raw_text: str) -> dict:
     criteres = []
     deductions = 0.0
 
-    # 1. Accréditation COFRAC
+    # 1. AccrÃ©ditation COFRAC
     if meta.get("labo_cofrac"):
         criteres.append({
-            "label": f"Accréditation COFRAC n°{meta['labo_cofrac']} présente",
+            "label": f"AccrÃ©ditation COFRAC nÂ°{meta['labo_cofrac']} prÃ©sente",
             "status": "ok", "points": 0,
-            "ref": "NF EN ISO/IEC 17025 §4.1"
+            "ref": "NF EN ISO/IEC 17025 Â§4.1"
         })
     else:
-        has_cofrac = bool(re.search(r'accr[eé]ditation|cofrac', raw_text[:2000], re.IGNORECASE))
+        has_cofrac = bool(re.search(r'accr[eÃ©]ditation|cofrac', raw_text[:2000], re.IGNORECASE))
         if has_cofrac:
-            criteres.append({"label": "Mention accréditation COFRAC trouvée (n° non extrait)", "status": "partial", "points": 0, "ref": "NF EN ISO/IEC 17025 §4.1"})
+            criteres.append({"label": "Mention accrÃ©ditation COFRAC trouvÃ©e (nÂ° non extrait)", "status": "partial", "points": 0, "ref": "NF EN ISO/IEC 17025 Â§4.1"})
         else:
-            criteres.append({"label": "Accréditation COFRAC non mentionnée", "status": "ko", "points": 1.0, "ref": "NF EN ISO/IEC 17025 §4.1"})
+            criteres.append({"label": "AccrÃ©ditation COFRAC non mentionnÃ©e", "status": "ko", "points": 1.0, "ref": "NF EN ISO/IEC 17025 Â§4.1"})
             deductions += 1.0
 
     # 2. Nombre d'essais
     nb = meta.get("nb_essais")
     if nb and nb >= NORM_CRITERIA["min_essais_valides"]:
-        criteres.append({"label": f"{nb} essais SRM réalisés (≥ 15 requis)", "status": "ok", "points": 0, "ref": "NF EN 14181 §5.2.1"})
+        criteres.append({"label": f"{nb} essais SRM rÃ©alisÃ©s (â¥ 15 requis)", "status": "ok", "points": 0, "ref": "NF EN 14181 Â§5.2.1"})
     elif nb:
-        criteres.append({"label": f"Seulement {nb} essais SRM (< 15 requis)", "status": "ko", "points": 1.5, "ref": "NF EN 14181 §5.2.1"})
+        criteres.append({"label": f"Seulement {nb} essais SRM (< 15 requis)", "status": "ko", "points": 1.5, "ref": "NF EN 14181 Â§5.2.1"})
         deductions += 1.5
     else:
-        criteres.append({"label": "Nombre d'essais non extrait du rapport", "status": "partial", "points": 0.3, "ref": "NF EN 14181 §5.2.1"})
+        criteres.append({"label": "Nombre d'essais non extrait du rapport", "status": "partial", "points": 0.3, "ref": "NF EN 14181 Â§5.2.1"})
         deductions += 0.3
 
-    # 3. Tests opérationnels
-    has_ops = bool(re.search(r'test\s+opération|alignement|étanchéité|aptitude', raw_text, re.IGNORECASE))
+    # 3. Tests opÃ©rationnels
+    has_ops = bool(re.search(r'test\s+opÃ©ration|alignement|Ã©tanchÃ©itÃ©|aptitude', raw_text, re.IGNORECASE))
     if has_ops:
-        criteres.append({"label": "Tests opérationnels documentés", "status": "ok", "points": 0, "ref": "NF EN 14181 §5.3"})
+        criteres.append({"label": "Tests opÃ©rationnels documentÃ©s", "status": "ok", "points": 0, "ref": "NF EN 14181 Â§5.3"})
     else:
-        criteres.append({"label": "Tests opérationnels non trouvés dans le rapport", "status": "partial", "points": 0.5, "ref": "NF EN 14181 §5.3"})
+        criteres.append({"label": "Tests opÃ©rationnels non trouvÃ©s dans le rapport", "status": "partial", "points": 0.5, "ref": "NF EN 14181 Â§5.3"})
         deductions += 0.5
 
-    # 4. Temps de réponse
+    # 4. Temps de rÃ©ponse
     tps_m = re.findall(r'(\d+)\s*s[eo]c[oa]ndes?\s*(?:non\s+conforme|NON)', raw_text, re.IGNORECASE)
-    tps_non_conf = re.search(r'temps\s+de\s+réponse.{0,200}non\s+conforme', raw_text, re.IGNORECASE | re.DOTALL)
+    tps_non_conf = re.search(r'temps\s+de\s+rÃ©ponse.{0,200}non\s+conforme', raw_text, re.IGNORECASE | re.DOTALL)
     if tps_non_conf:
-        criteres.append({"label": "Temps de réponse non conforme détecté", "status": "ko", "points": 0.5, "ref": "XP X43-132 §5.4 + NF EN 14181 §5.3.5"})
+        criteres.append({"label": "Temps de rÃ©ponse non conforme dÃ©tectÃ©", "status": "ko", "points": 0.5, "ref": "XP X43-132 Â§5.4 + NF EN 14181 Â§5.3.5"})
         deductions += 0.5
     else:
-        criteres.append({"label": "Temps de réponse conformes (ou non spécifiés)", "status": "ok", "points": 0, "ref": "XP X43-132 §5.4"})
+        criteres.append({"label": "Temps de rÃ©ponse conformes (ou non spÃ©cifiÃ©s)", "status": "ok", "points": 0, "ref": "XP X43-132 Â§5.4"})
 
-    # 5. Essais retirés > 2 (vérification sur polluants)
+    # 5. Essais retirÃ©s > 2 (vÃ©rification sur polluants)
     over_retires = [p for p in pollutants if (p.get("essais_retires") or 0) > NORM_CRITERIA["max_essais_retires"]]
     if over_retires:
         names = ", ".join([p.get("name", "?") for p in over_retires])
-        criteres.append({"label": f"Essais retirés > 2 sur : {names} (recommandation XP X43-132)", "status": "partial", "points": 0.5, "ref": "XP X43-132 §7.3"})
+        criteres.append({"label": f"Essais retirÃ©s > 2 sur : {names} (recommandation XP X43-132)", "status": "partial", "points": 0.5, "ref": "XP X43-132 Â§7.3"})
         deductions += 0.5
     else:
-        criteres.append({"label": "Nombre d'essais retirés acceptable (≤ 2)", "status": "ok", "points": 0, "ref": "XP X43-132 §7.3"})
+        criteres.append({"label": "Nombre d'essais retirÃ©s acceptable (â¤ 2)", "status": "ok", "points": 0, "ref": "XP X43-132 Â§7.3"})
 
-    # 6. Valeur suspecte de seuil variabilité
+    # 6. Valeur suspecte de seuil variabilitÃ©
     zero_threshold = [p for p in pollutants
                       if p.get("kv_threshold") is not None and p.get("kv_threshold") == 0.0]
     if zero_threshold:
         names = ", ".join([p.get("name", "?") for p in zero_threshold])
-        criteres.append({"label": f"Seuil variabilité 1.5σKv = 0,0 sur : {names} (anomalie probable)", "status": "ko", "points": 0.5, "ref": "NF EN 14181 §5.4.3"})
+        criteres.append({"label": f"Seuil variabilitÃ© 1.5ÏKv = 0,0 sur : {names} (anomalie probable)", "status": "ko", "points": 0.5, "ref": "NF EN 14181 Â§5.4.3"})
         deductions += 0.5
 
-    # 7. Cas / procédure justifiée
+    # 7. Cas / procÃ©dure justifiÃ©e
     has_cas = bool(re.search(r'cas\s+[abc]\s+(?:selon|:)', raw_text, re.IGNORECASE))
     if has_cas:
-        criteres.append({"label": "Procédure d'étalonnage (Cas A/B/C) justifiée", "status": "ok", "points": 0, "ref": "XP X43-132 §7.2"})
+        criteres.append({"label": "ProcÃ©dure d'Ã©talonnage (Cas A/B/C) justifiÃ©e", "status": "ok", "points": 0, "ref": "XP X43-132 Â§7.2"})
     else:
-        criteres.append({"label": "Procédure d'étalonnage non explicitée", "status": "partial", "points": 0.2, "ref": "XP X43-132 §7.2"})
+        criteres.append({"label": "ProcÃ©dure d'Ã©talonnage non explicitÃ©e", "status": "partial", "points": 0.2, "ref": "XP X43-132 Â§7.2"})
         deductions += 0.2
 
     score = max(1.0, 5.0 - deductions)
@@ -164,11 +164,16 @@ def _analyze_rapport(meta: dict, pollutants: list, raw_text: str) -> dict:
     }
 
 
-# ─── Analyse canal AMS ────────────────────────────────────────────────────────
+# âââ Analyse canal AMS ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _analyze_channel(p: dict, raw_text: str = "") -> dict:
     name = p.get("name", "?")
     result = dict(p)  # copie
+    # Garantir que toutes les clés attendues par le template sont présentes
+    for _k in ('kv_threshold', 'sd', 'a', 'b', 'r2', 'vle', 'strategy', 'cas', 'name_raw', 'valid'):
+        result.setdefault(_k, None)
+    result.setdefault('essais_retires', 0)
+    result.setdefault('name_raw', result.get('name', ''))
     issues = []
     positive = []
 
@@ -185,58 +190,58 @@ def _analyze_channel(p: dict, raw_text: str = "") -> dict:
     vle = p.get("vle")
     essais_retires = p.get("essais_retires", 0) or 0
 
-    # Score de départ: 5
+    # Score de dÃ©part: 5
     score = 5.0
     verdict_override = p.get("valid")  # si le rapport le dit explicitement
 
-    # R²
+    # RÂ²
     if r2 is not None:
         if r2 >= r2_min:
-            positive.append({"label": f"R² = {r2} ≥ {r2_min} (critère respecté)", "ref": "XP X43-132 recommandation"})
+            positive.append({"label": f"RÂ² = {r2} â¥ {r2_min} (critÃ¨re respectÃ©)", "ref": "XP X43-132 recommandation"})
         elif r2 >= r2_min - 0.05:
-            issues.append({"label": f"R² = {r2} légèrement inférieur au seuil recommandé {r2_min}", "severity": "warn", "ref": "XP X43-132 recommandation"})
+            issues.append({"label": f"RÂ² = {r2} lÃ©gÃ¨rement infÃ©rieur au seuil recommandÃ© {r2_min}", "severity": "warn", "ref": "XP X43-132 recommandation"})
             score -= 0.5
         else:
-            issues.append({"label": f"R² = {r2} insuffisant (seuil recommandé ≥ {r2_min})", "severity": "error", "ref": "XP X43-132 recommandation"})
+            issues.append({"label": f"RÂ² = {r2} insuffisant (seuil recommandÃ© â¥ {r2_min})", "severity": "error", "ref": "XP X43-132 recommandation"})
             score -= 1.5
 
     # Pente a
     if a is not None:
         if NORM_CRITERIA["a_min"] <= a <= NORM_CRITERIA["a_max"]:
-            positive.append({"label": f"Pente a = {a} (0,9 ≤ a ≤ 1,2 ✓)", "ref": "XP X43-132 recommandation"})
+            positive.append({"label": f"Pente a = {a} (0,9 â¤ a â¤ 1,2 â)", "ref": "XP X43-132 recommandation"})
         elif a < 0:
-            issues.append({"label": f"Pente a = {a} NÉGATIVE — AMS hors service ou relation inverse", "severity": "critical", "ref": "XP X43-132 §7.3"})
+            issues.append({"label": f"Pente a = {a} NÃGATIVE â AMS hors service ou relation inverse", "severity": "critical", "ref": "XP X43-132 Â§7.3"})
             score -= 3.0
         elif a < NORM_CRITERIA["a_min"]:
-            issues.append({"label": f"Pente a = {a} < 0,9 : sous-estimation systématique de l'AMS", "severity": "warn", "ref": "XP X43-132 recommandation"})
+            issues.append({"label": f"Pente a = {a} < 0,9 : sous-estimation systÃ©matique de l'AMS", "severity": "warn", "ref": "XP X43-132 recommandation"})
             score -= 0.5
         elif a > NORM_CRITERIA["a_max"]:
-            issues.append({"label": f"Pente a = {a} > 1,2 : surestimation systématique de l'AMS", "severity": "warn", "ref": "XP X43-132 recommandation"})
+            issues.append({"label": f"Pente a = {a} > 1,2 : surestimation systÃ©matique de l'AMS", "severity": "warn", "ref": "XP X43-132 recommandation"})
             score -= 0.3
 
     # Intercept b vs VLE
     if b is not None and vle is not None and vle > 0:
         b_limit = NORM_CRITERIA["b_vle_pct"] * vle
         if abs(b) <= b_limit:
-            positive.append({"label": f"Intercept b = {b} ≤ 10%·VLE = {b_limit:.2f} ✓", "ref": "XP X43-132 recommandation"})
+            positive.append({"label": f"Intercept b = {b} â¤ 10%Â·VLE = {b_limit:.2f} â", "ref": "XP X43-132 recommandation"})
         else:
-            issues.append({"label": f"Intercept b = {b} > 10%·VLE = {b_limit:.2f}", "severity": "warn", "ref": "XP X43-132 recommandation"})
+            issues.append({"label": f"Intercept b = {b} > 10%Â·VLE = {b_limit:.2f}", "severity": "warn", "ref": "XP X43-132 recommandation"})
             score -= 0.3
 
-    # Variabilité Sd
+    # VariabilitÃ© Sd
     if sd is not None and kv is not None:
         if kv == 0.0:
-            issues.append({"label": f"Seuil 1,5σKv = 0,0 — anomalie de calcul dans le rapport", "severity": "error", "ref": "NF EN 14181 §5.4.3"})
+            issues.append({"label": f"Seuil 1,5ÏKv = 0,0 â anomalie de calcul dans le rapport", "severity": "error", "ref": "NF EN 14181 Â§5.4.3"})
             score -= 1.0
         elif sd <= kv:
-            positive.append({"label": f"Variabilité Sd = {sd} ≤ seuil {kv} ✓", "ref": "NF EN 14181 §5.4.3"})
+            positive.append({"label": f"VariabilitÃ© Sd = {sd} â¤ seuil {kv} â", "ref": "NF EN 14181 Â§5.4.3"})
         else:
-            issues.append({"label": f"Variabilité Sd = {sd} > seuil {kv} (non conforme)", "severity": "error", "ref": "NF EN 14181 §5.4.3"})
+            issues.append({"label": f"VariabilitÃ© Sd = {sd} > seuil {kv} (non conforme)", "severity": "error", "ref": "NF EN 14181 Â§5.4.3"})
             score -= 2.0
 
-    # Essais retirés
+    # Essais retirÃ©s
     if essais_retires > NORM_CRITERIA["max_essais_retires"]:
-        issues.append({"label": f"{essais_retires} essais retirés > recommandation de 2 (XP X43-132)", "severity": "warn", "ref": "XP X43-132 §7.3"})
+        issues.append({"label": f"{essais_retires} essais retirÃ©s > recommandation de 2 (XP X43-132)", "severity": "warn", "ref": "XP X43-132 Â§7.3"})
         score -= 0.3
 
     score = max(1.0, min(5.0, score))
@@ -263,19 +268,19 @@ def _analyze_channel(p: dict, raw_text: str = "") -> dict:
     return result
 
 
-# ─── Score AMS global ─────────────────────────────────────────────────────────
+# âââ Score AMS global âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _compute_ams_score(channels: list, regulated_count: int, regulated_valid: int) -> float:
     if regulated_count == 0:
         return 3.0
     ratio = regulated_valid / regulated_count
-    # Pondération: ratio de conformité + pénalité si problèmes critiques
+    # PondÃ©ration: ratio de conformitÃ© + pÃ©nalitÃ© si problÃ¨mes critiques
     critical = sum(1 for c in channels for i in c.get("issues", []) if i.get("severity") == "critical")
     score = ratio * 5.0 - (critical * 0.5)
     return max(1.0, min(5.0, round(score * 2) / 2))
 
 
-# ─── Plan d'action ────────────────────────────────────────────────────────────
+# âââ Plan d'action ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _generate_actions(rapport: dict, channels: list, meta: dict) -> list:
     actions = []
@@ -296,17 +301,17 @@ def _generate_actions(rapport: dict, channels: list, meta: dict) -> list:
         for issue in ch.get("issues", []):
             if issue["severity"] == "critical":
                 add(
-                    f"CRITIQUE — {name} : {issue['label']}. Arrêter l'utilisation réglementaire et réaliser un diagnostic complet de l'AMS. Nouveau QAL2 obligatoire.",
-                    name, "Exploitant + Fournisseur AMS", "AMS", "P1", "Immédiat", issue["ref"]
+                    f"CRITIQUE â {name} : {issue['label']}. ArrÃªter l'utilisation rÃ©glementaire et rÃ©aliser un diagnostic complet de l'AMS. Nouveau QAL2 obligatoire.",
+                    name, "Exploitant + Fournisseur AMS", "AMS", "P1", "ImmÃ©diat", issue["ref"]
                 )
             elif issue["severity"] == "error" and not ch.get("valid"):
                 add(
-                    f"{name} non conforme — {issue['label']}. L'AMS ne peut pas assurer la surveillance réglementaire.",
+                    f"{name} non conforme â {issue['label']}. L'AMS ne peut pas assurer la surveillance rÃ©glementaire.",
                     name, "Exploitant + Fournisseur AMS", "AMS", "P1", "< 1 mois", issue["ref"]
                 )
             elif issue["severity"] == "warn":
                 add(
-                    f"{name} — {issue['label']}. Vérifier et corriger avant le prochain AST.",
+                    f"{name} â {issue['label']}. VÃ©rifier et corriger avant le prochain AST.",
                     name, "Exploitant", "AMS", "P2", "< 3 mois", issue["ref"]
                 )
 
@@ -314,12 +319,12 @@ def _generate_actions(rapport: dict, channels: list, meta: dict) -> list:
     for crit in rapport.get("criteres", []):
         if crit["status"] == "ko":
             add(
-                f"Rapport labo — {crit['label']}. Contacter le laboratoire pour correction.",
+                f"Rapport labo â {crit['label']}. Contacter le laboratoire pour correction.",
                 "Rapport", "Laboratoire", "LABO", "P1", "< 2 semaines", crit["ref"]
             )
         elif crit["status"] == "partial":
             add(
-                f"Rapport labo — {crit['label']}. Vérifier avec le laboratoire.",
+                f"Rapport labo â {crit['label']}. VÃ©rifier avec le laboratoire.",
                 "Rapport", "Laboratoire", "LABO", "P2", "< 1 mois", crit["ref"]
             )
 
@@ -327,32 +332,32 @@ def _generate_actions(rapport: dict, channels: list, meta: dict) -> list:
     nb_valid = sum(1 for ch in channels if ch.get("valid"))
     if nb_valid > 0:
         add(
-            "Mettre en place la surveillance hebdomadaire du domaine d'étalonnage valide pour les canaux conformes. Documenter les dépassements et déclencher un nouveau QAL2 si critères seuils atteints.",
-            "Canaux conformes", "Exploitant", "EXPLOIT", "P2", "Continu", "XP X43-132 §9"
+            "Mettre en place la surveillance hebdomadaire du domaine d'Ã©talonnage valide pour les canaux conformes. Documenter les dÃ©passements et dÃ©clencher un nouveau QAL2 si critÃ¨res seuils atteints.",
+            "Canaux conformes", "Exploitant", "EXPLOIT", "P2", "Continu", "XP X43-132 Â§9"
         )
         add(
-            "Mettre à jour les cartes de contrôle QAL3 (Shewhart) avec les nouvelles fonctions d'étalonnage. Transmettre à l'opérateur QAL3.",
-            "Canaux conformes", "Exploitant", "DOCS", "P2", "< 2 mois", "NF EN 14181 §6"
+            "Mettre Ã  jour les cartes de contrÃ´le QAL3 (Shewhart) avec les nouvelles fonctions d'Ã©talonnage. Transmettre Ã  l'opÃ©rateur QAL3.",
+            "Canaux conformes", "Exploitant", "DOCS", "P2", "< 2 mois", "NF EN 14181 Â§6"
         )
 
     add(
-        "Transmettre le rapport QAL2 à l'inspection DREAL/DRIEAT et mettre à jour le dossier réglementaire avec les mesures correctives prévues.",
-        "Tous", "Exploitant", "DOCS", "P2", "< 1 mois", "Arrêté préfectoral + AM 20/09/2002"
+        "Transmettre le rapport QAL2 Ã  l'inspection DREAL/DRIEAT et mettre Ã  jour le dossier rÃ©glementaire avec les mesures correctives prÃ©vues.",
+        "Tous", "Exploitant", "DOCS", "P2", "< 1 mois", "ArrÃªtÃ© prÃ©fectoral + AM 20/09/2002"
     )
     add(
-        "Planifier le prochain AST (canaux valides) et les QAL2 de remise en conformité (canaux invalides).",
-        "Tous", "Exploitant + Labo", "EXPLOIT", "P3", "< 12 mois", "NF EN 14181 §7"
+        "Planifier le prochain AST (canaux valides) et les QAL2 de remise en conformitÃ© (canaux invalides).",
+        "Tous", "Exploitant + Labo", "EXPLOIT", "P3", "< 12 mois", "NF EN 14181 Â§7"
     )
 
     return actions
 
 
-# ─── Vérification COFRAC ──────────────────────────────────────────────────────
+# âââ VÃ©rification COFRAC ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def check_cofrac_status(cofrac_number: Optional[str] = None, labo_name: Optional[str] = None) -> dict:
     """
-    Vérifie le statut d'accréditation COFRAC.
-    Simple vérification de disponibilité du site + lien direct.
+    VÃ©rifie le statut d'accrÃ©ditation COFRAC.
+    Simple vÃ©rification de disponibilitÃ© du site + lien direct.
     """
     import requests
     base_url = "https://www.cofrac.fr"
@@ -368,14 +373,14 @@ def check_cofrac_status(cofrac_number: Optional[str] = None, labo_name: Optional
     result["checked_at"] = datetime.now().isoformat()
 
     try:
-        # Vérification que le site COFRAC est accessible
+        # VÃ©rification que le site COFRAC est accessible
         r = requests.get(f"{base_url}/accreditations/les-organismes-accredites/", timeout=8)
         if r.status_code == 200:
             result["status"] = "site_ok"
-            result["message"] = "Site COFRAC accessible. Vérification manuelle recommandée."
+            result["message"] = "Site COFRAC accessible. VÃ©rification manuelle recommandÃ©e."
             if cofrac_number:
                 result["url"] = f"{base_url}/accreditations/les-organismes-accredites/?numero={cofrac_number}"
-                result["message"] = f"Lien direct vers l'accréditation n°{cofrac_number} disponible. Vérification manuelle nécessaire."
+                result["message"] = f"Lien direct vers l'accrÃ©ditation nÂ°{cofrac_number} disponible. VÃ©rification manuelle nÃ©cessaire."
         else:
             result["status"] = "site_error"
             result["message"] = f"Site COFRAC non accessible (HTTP {r.status_code})"
@@ -386,7 +391,7 @@ def check_cofrac_status(cofrac_number: Optional[str] = None, labo_name: Optional
     return result
 
 
-# ─── Vérification normes ──────────────────────────────────────────────────────
+# âââ VÃ©rification normes ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def check_norm_updates() -> list:
     """Retourne les informations sur les versions normatives en vigueur."""
@@ -398,18 +403,18 @@ def check_norm_updates() -> list:
             "reference": info["ref"],
             "status": "current",
             "message": f"Version en vigueur : {info['ref']}",
-            "source": "Base de connaissance ENVEA (mise à jour manuelle recommandée)"
+            "source": "Base de connaissance ENVEA (mise Ã  jour manuelle recommandÃ©e)"
         })
     return updates
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# âââ Helpers ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _score_to_stars(score: float) -> str:
     full = int(score)
     half = 1 if (score - full) >= 0.5 else 0
     empty = 5 - full - half
-    return "★" * full + ("·" if half else "") + "☆" * empty
+    return "â" * full + ("Â·" if half else "") + "â" * empty
 
 
 def _score_color(score: float) -> str:
