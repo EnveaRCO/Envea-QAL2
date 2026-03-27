@@ -13,7 +13,7 @@
       <div class="col-md-8">
         <h4 class="mb-1 fw-bold">{{ meta.type_rapport or 'QAL2' }} — {{ meta.client or '—' }}</h4>
         <div class="d-flex flex-wrap gap-3 text-muted small">
-          <span><i class="bi bi-folder2-open me-1"></i><strong>{{ meta.dossier or '✓' }}</strong></span>
+          <span><i class="bi bi-folder2-open me-1"></i><strong>{{ meta.dossier or '—' }}</strong></span>
           <span><i class="bi bi-building me-1"></i>{{ meta.labo or '—' }}</span>
           <span><i class="bi bi-geo-alt me-1"></i>{{ meta.installation or '' }}{% if meta.ville %} · {{ meta.ville }}{% endif %}</span>
           <span><i class="bi bi-calendar3 me-1"></i>{{ meta.dates or '—' }}</span>
@@ -34,10 +34,10 @@
   </div>
 </div>
 
-<!-- 3 Blocs résumé -->
+<!-- 4 Blocs résumé -->
 <div class="row g-3 mb-4">
   <!-- Rapport labo -->
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card h-100" style="border-top:4px solid {% if analysis.score_rapport>=4 %}var(--vert){% elif analysis.score_rapport>=3 %}var(--envea-orange){% else %}var(--rouge){% endif %};">
       <div class="card-body">
         <div class="small text-muted text-uppercase fw-semibold mb-1"><i class="bi bi-file-text me-1"></i>Fiabilité Rapport Labo</div>
@@ -46,12 +46,12 @@
           <span class="text-muted">/5</span>
         </div>
         <div style="color:#f39c12;font-size:1.1rem;">{{ rapport.score_stars }}</div>
-        <div class="small mt-1 text-muted">{{ rapport.anomalies }} point(s) à vérifier · {{ rapport.errors }} erreur(s)</div>
+        <div class="small mt-1 text-muted">{{ rapport.anomalies }} point(s) · {{ rapport.errors }} erreur(s)</div>
       </div>
     </div>
   </div>
   <!-- AMS -->
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card h-100" style="border-top:4px solid {% if analysis.score_ams>=4 %}var(--vert){% elif analysis.score_ams>=3 %}var(--envea-orange){% else %}var(--rouge){% endif %};">
       <div class="card-body">
         <div class="small text-muted text-uppercase fw-semibold mb-1"><i class="bi bi-cpu me-1"></i>Performance AMS</div>
@@ -61,27 +61,40 @@
         </div>
         <div style="color:#f39c12;font-size:1.1rem;">{{ rapport.score_stars }}</div>
         <div class="small mt-1">
-          <span class="text-success fw-bold">{{ analysis.nb_valid }}✓ conformes</span>
-          <span class="text-muted mx-1">/</span>
-          <span class="text-danger fw-bold">{{ analysis.nb_invalid }}✗ invalides</span>
+          <span class="text-success fw-bold">{{ analysis.nb_valid }}✓</span>
+          <span class="text-muted"> / </span>
+          <span class="text-danger fw-bold">{{ analysis.nb_invalid }}✗</span>
         </div>
       </div>
     </div>
   </div>
+  <!-- Défense ENVEA -->
+  <div class="col-md-3">
+    <div class="card h-100" style="border-top:4px solid #6f42c1;">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-semibold mb-1"><i class="bi bi-shield-check me-1"></i>Arguments Défense</div>
+        <div class="d-flex align-items-baseline gap-2">
+          <span class="fs-2 fw-bold">{{ analysis.nb_defense or 0 }}</span>
+          <span class="text-muted">arguments</span>
+        </div>
+        <div style="color:#6f42c1;font-size:1rem;">⚖️ ENVEA Defense</div>
+        <div class="small mt-1 text-muted">Points à contester au labo</div>
+      </div>
+    </div>
+  </div>
   <!-- Plan d'action -->
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card h-100" style="border-top:4px solid var(--vert);">
       <div class="card-body">
         <div class="small text-muted text-uppercase fw-semibold mb-1"><i class="bi bi-list-check me-1"></i>Plan d'Action</div>
         <div class="d-flex align-items-baseline gap-2">
           <span class="fs-2 fw-bold">{{ analysis.nb_actions }}</span>
-          <span class="text-muted">recommandations</span>
+          <span class="text-muted">actions</span>
         </div>
-        <div style="color:#f39c12;font-size:1.1rem;">●●●●●</div>
+        <div style="color:#f39c12;font-size:1rem;">●●●●●</div>
         <div class="small mt-1">
-          <span class="text-danger fw-bold">{{ analysis.nb_urgent }} P1 urgentes</span>
-          <span class="text-muted mx-1">·</span>
-          <span class="text-muted">{{ analysis.nb_actions - analysis.nb_urgent }} P2/P3</span>
+          <span class="text-danger fw-bold">{{ analysis.nb_urgent }} P1</span>
+          <span class="text-muted"> · {{ analysis.nb_actions - analysis.nb_urgent }} P2/P3</span>
         </div>
       </div>
     </div>
@@ -104,6 +117,8 @@
 <ul class="nav nav-tabs" id="resultTabs">
   <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#t-rapport"><i class="bi bi-file-text me-1"></i>Rapport labo</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-ams"><i class="bi bi-cpu me-1"></i>Canaux AMS</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-ops"><i class="bi bi-clipboard-check me-1"></i>Tests Opér.</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-defense" style="color:#6f42c1;font-weight:600;"><i class="bi bi-shield-check me-1"></i>Défense ENVEA</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-actions"><i class="bi bi-list-check me-1"></i>Plan d'action</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-notes" id="tabNotes"><i class="bi bi-sticky me-1"></i>Notes</button></li>
 </ul>
@@ -124,7 +139,14 @@
             {% elif c.status == 'partial' %}<span class="badge bg-warning text-dark">△ Partiel</span>
             {% else %}<span class="badge bg-danger">✗ Erreur</span>{% endif %}
           </td>
-          <td>{{ c.label }}</td>
+          <td>
+            {{ c.label }}
+            {% if c.detail %}
+            <div class="small text-muted mt-1" style="font-size:.78rem;">
+              <i class="bi bi-shield me-1" style="color:#6f42c1;"></i>{{ c.detail }}
+            </div>
+            {% endif %}
+          </td>
           <td class="norm-ref">{{ c.ref }}</td>
         </tr>
         {% else %}
@@ -227,11 +249,18 @@
           {% if ch.issues %}
           <div class="mt-1">
             {% for issue in ch.issues %}
-            <div class="d-flex gap-1 mb-1">
-              <span class="{% if issue.severity=='critical' %}text-danger{% elif issue.severity=='error' %}text-danger{% else %}text-warning{% endif %}" style="font-size:.85rem;">
-                {% if issue.severity=='critical' %}🔴{% elif issue.severity=='error' %}🟠{% else %}🟡{% endif %}
-              </span>
-              <span class="text-dark">{{ issue.label }}</span>
+            <div class="mb-1" style="border-left:3px solid {% if issue.severity=='critical' %}#dc3545{% elif issue.severity=='error' %}#fd7e14{% else %}#ffc107{% endif %};padding-left:6px;">
+              <div class="d-flex gap-1">
+                <span style="font-size:.85rem;">
+                  {% if issue.severity=='critical' %}🔴{% elif issue.severity=='error' %}🟠{% else %}🟡{% endif %}
+                </span>
+                <span class="text-dark" style="font-size:.82rem;">{{ issue.label }}</span>
+              </div>
+              {% if issue.defense %}
+              <div class="text-muted" style="font-size:.75rem;margin-top:2px;padding-left:18px;">
+                <i class="bi bi-shield me-1" style="color:#6f42c1;"></i>{{ issue.defense[:120] }}{% if issue.defense|length > 120 %}…{% endif %}
+              </div>
+              {% endif %}
             </div>
             {% endfor %}
           </div>
@@ -288,6 +317,153 @@
       </tbody>
     </table>
   </div>
+</div>
+
+<!-- ONGLET TESTS OPERATIONNELS -->
+<div class="tab-pane fade" id="t-ops">
+  <h6 class="section-title mb-3">Tests Opérationnels — NF EN 14181 §5.3</h6>
+
+  <!-- Temps de réponse -->
+  {% if analysis.response_times %}
+  <h6 class="fw-semibold mt-3 mb-2"><i class="bi bi-stopwatch me-1"></i>9.9 — Temps de réponse</h6>
+  <div class="table-responsive mb-3">
+    <table class="table table-sm table-bordered align-middle">
+      <thead><tr><th>Paramètre</th><th>Temps mesuré</th><th>Limite</th><th>Conformité</th><th>Remarque</th></tr></thead>
+      <tbody>
+        {% for rt in analysis.response_times %}
+        <tr class="{% if rt.non_conforme %}table-danger bg-opacity-10{% else %}table-success bg-opacity-10{% endif %}">
+          <td><strong>{{ rt.param | upper }}</strong></td>
+          <td>{{ rt.time_s }}s{% if rt.time_s and rt.time_s >= 60 %} ({{ (rt.time_s // 60) }}min {{ rt.time_s % 60 }}s){% endif %}</td>
+          <td>{{ rt.limit_s }}s</td>
+          <td>
+            {% if rt.non_conforme %}<span class="badge bg-danger">NON CONFORME</span>
+            {% elif rt.conforme %}<span class="badge bg-success">CONFORME</span>
+            {% else %}<span class="badge bg-secondary">?</span>{% endif %}
+          </td>
+          <td class="small text-muted">
+            {% if rt.direct_injection %}<span class="badge bg-warning text-dark">⚠ Injection directe analyseur</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Étanchéité -->
+  {% if analysis.operational_tests and analysis.operational_tests.etancheite %}
+  {% set et = analysis.operational_tests.etancheite %}
+  <h6 class="fw-semibold mt-3 mb-2"><i class="bi bi-shield-lock me-1"></i>9.6 — Test d'étanchéité</h6>
+  <div class="alert {% if et.conforme %}alert-success{% else %}alert-danger{% endif %} py-2 mb-3">
+    <strong>{{ et.status or '?' }}</strong>
+  </div>
+  {% endif %}
+
+  <!-- Documentation -->
+  {% if analysis.operational_tests and analysis.operational_tests.documentation %}
+  {% set doc = analysis.operational_tests.documentation %}
+  <h6 class="fw-semibold mt-3 mb-2"><i class="bi bi-folder2 me-1"></i>9.3 — Documentation AMS
+    {% if doc.nb_manquant and doc.nb_manquant > 0 %}<span class="badge bg-warning text-dark ms-1">{{ doc.nb_manquant }} manquants</span>{% endif %}
+  </h6>
+  {% if doc.items %}
+  <div class="row g-2 mb-3">
+    {% for key, val in doc.items | dictsort %}
+    <div class="col-md-6 col-lg-4">
+      <div class="d-flex align-items-center gap-2 p-2 border rounded small {% if val == 'NON' %}border-warning bg-warning bg-opacity-10{% else %}border-success bg-success bg-opacity-5{% endif %}">
+        {% if val == 'OUI' %}<span class="text-success fw-bold">✓</span>{% else %}<span class="text-danger fw-bold">✗</span>{% endif %}
+        <span>{{ key | replace('_', ' ') | title }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <!-- Aptitude -->
+  {% if analysis.operational_tests and analysis.operational_tests.aptitude %}
+  {% set apt = analysis.operational_tests.aptitude %}
+  <h6 class="fw-semibold mt-3 mb-2"><i class="bi bi-person-check me-1"></i>9.4 — Aptitude à l'emploi
+    {% if apt.nb_non_conforme and apt.nb_non_conforme > 0 %}<span class="badge bg-warning text-dark ms-1">{{ apt.nb_non_conforme }} NON</span>{% endif %}
+  </h6>
+  <div class="row g-2 mb-3">
+    {% for item in apt.items %}
+    <div class="col-md-6">
+      <div class="d-flex align-items-center gap-2 p-2 border rounded small {% if item.status == 'NON' %}border-warning bg-warning bg-opacity-10{% else %}border-success bg-success bg-opacity-5{% endif %}">
+        {% if item.status == 'OUI' %}<span class="text-success fw-bold">✓</span>{% else %}<span class="text-warning fw-bold">△</span>{% endif %}
+        <span>{{ item.label }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- MR Non-extractifs -->
+  {% if analysis.operational_tests and analysis.operational_tests.mr_non_extractif %}
+  {% set mr = analysis.operational_tests.mr_non_extractif %}
+  <h6 class="fw-semibold mt-3 mb-2"><i class="bi bi-thermometer me-1"></i>9.8 — Injections MR AMS non-extractifs</h6>
+  <div class="alert {% if mr.realise %}alert-success{% else %}alert-warning{% endif %} py-2 mb-3 small">
+    {{ mr.note or '—' }}
+  </div>
+  {% endif %}
+
+  <!-- Dérogations -->
+  {% if analysis.derogations %}
+  <h6 class="fw-semibold mt-3 mb-2"><i class="bi bi-exclamation-triangle me-1 text-warning"></i>Dérogations détectées</h6>
+  {% for d in analysis.derogations %}
+  <div class="alert alert-warning py-2 mb-2 small">{{ d }}</div>
+  {% endfor %}
+  {% endif %}
+
+  {% if not analysis.operational_tests and not analysis.response_times %}
+  <div class="text-center text-muted py-4"><i class="bi bi-exclamation-circle me-2"></i>Tests opérationnels non extraits automatiquement. Vérifier manuellement dans le rapport.</div>
+  {% endif %}
+</div>
+
+<!-- ONGLET DEFENSE ENVEA -->
+<div class="tab-pane fade" id="t-defense">
+  <div class="alert" style="background:#f3eeff;border-left:5px solid #6f42c1;padding:12px 16px;" role="alert">
+    <strong><i class="bi bi-shield-check me-2" style="color:#6f42c1;"></i>Arguments de défense ENVEA</strong>
+    <div class="small mt-1 text-muted">
+      Ces points vous permettent de contester ou nuancer les conclusions du laboratoire.
+      Chaque argument est basé sur l'analyse des données du rapport et les références normatives.
+    </div>
+  </div>
+
+  {% if analysis.defense_points %}
+  <div class="row g-3">
+    {% for dp in analysis.defense_points %}
+    <div class="col-12">
+      <div class="card" style="border-left:5px solid {% if dp.severity=='critique' %}#dc3545{% elif dp.severity=='important' %}#fd7e14{% else %}#198754{% endif %};">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:{% if dp.severity=='critique' %}#fff5f5{% elif dp.severity=='important' %}#fff8f0{% else %}#f0fff4{% endif %};">
+          <div>
+            <span class="badge {% if dp.severity=='critique' %}bg-danger{% elif dp.severity=='important' %}bg-warning text-dark{% else %}bg-success{% endif %} me-2">
+              {% if dp.severity=='critique' %}🔴 CRITIQUE{% elif dp.severity=='important' %}🟠 IMPORTANT{% else %}✅ INFO{% endif %}
+            </span>
+            <strong>{{ dp.title }}</strong>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-secondary">{{ dp.category }}</span>
+            <small class="text-muted norm-ref">{{ dp.ref }}</small>
+          </div>
+        </div>
+        <div class="card-body py-3">
+          <p class="mb-2" style="font-size:.9rem;">{{ dp.argument }}</p>
+          {% if dp.action %}
+          <div class="p-2 rounded small" style="background:#f0f4ff;border-left:3px solid #4361ee;">
+            <strong><i class="bi bi-arrow-right-circle me-1"></i>Action recommandée :</strong> {{ dp.action }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center text-muted py-4">
+    <i class="bi bi-check-circle text-success me-2" style="font-size:2rem;"></i>
+    <div>Aucun argument de défense particulier — les résultats sont généralement favorables.</div>
+  </div>
+  {% endif %}
 </div>
 
 <!-- ONGLET NOTES -->
